@@ -1126,7 +1126,16 @@ def render_image_grid(images: list[dict], brand_id: int, key_prefix: str):
                 render_ad_image(url, f"saved_{i}")
             else:
                 st.markdown('<div class="img-placeholder">No image</div>', unsafe_allow_html=True)
-            st.markdown(f'<div style="margin:6px 0 10px;padding:6px 8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:6px;font-family:\'JetBrains Mono\',monospace;font-size:10px;color:#8080a8;word-break:break-all;line-height:1.4">{filename}</div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div style="display:flex;align-items:center;gap:6px;margin:8px 0 4px">'
+                f'<span style="display:inline-block;background:rgba(124,58,237,0.15);color:#a78bfa;'
+                f'font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;'
+                f'border:1px solid rgba(124,58,237,0.25);letter-spacing:0.5px;white-space:nowrap">META</span>'
+                f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;color:#404060;'
+                f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{filename}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
             b1, b2 = st.columns(2)
             with b1:
                 if st.button("💾 Save", key=f"{key_prefix}_save_{i}"):
@@ -1235,8 +1244,13 @@ def render_output_panel(key_prefix: str = "dd"):
                 if url:
                     render_ad_image(url, f"{key_prefix}_{i}")
                 st.markdown(
-                    f'<p style="font-family:\'JetBrains Mono\',monospace;font-size:9px;'
-                    f'color:#404060;margin:2px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{filename}</p>',
+                    f'<div style="display:flex;align-items:center;gap:6px;margin:8px 0 4px">'
+                    f'<span style="display:inline-block;background:rgba(124,58,237,0.15);color:#a78bfa;'
+                    f'font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;'
+                    f'border:1px solid rgba(124,58,237,0.25);letter-spacing:0.5px;white-space:nowrap">META</span>'
+                    f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;color:#404060;'
+                    f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{filename}</span>'
+                    f'</div>',
                     unsafe_allow_html=True,
                 )
                 b1, b2 = st.columns(2)
@@ -1504,7 +1518,7 @@ with st.sidebar:
     page = st.radio(
         "Navigation",
         ["Generate Ads", "Campaign Analytics", "Saved Ads Library",
-         "📋 History", "Brands", "📦 Products", "Settings"],
+         "History", "Brands", "Products", "Settings"],
         label_visibility="collapsed",
     )
 
@@ -1977,8 +1991,33 @@ elif page == "Campaign Analytics":
     df = analytics_dataframe()
 
     if df.empty:
-        st.info("No ad data yet. Generate and save some ads to see analytics.")
-    else:
+        # ── Demo mode — synthetic data ──────────────────────────────────────────
+        import numpy as _np
+        _rng = _np.random.default_rng(42)
+        _demo_days  = pd.date_range(end=pd.Timestamp.today(), periods=30, freq="D")
+        _demo_brands = ["Nike", "Glossier", "Oatly"]
+        _rows = []
+        for _b in _demo_brands:
+            for _d in _demo_days:
+                _imp  = int(_rng.integers(4000, 18000))
+                _clk  = int(_rng.integers(80, int(_imp * 0.07)))
+                _conv = int(_rng.integers(2, max(3, _clk // 8)))
+                _spend = round(float(_rng.uniform(40, 280)), 2)
+                _rows.append({"brand": _b, "date": _d.date(), "impressions": _imp,
+                               "clicks": _clk, "conversions": _conv, "spend": _spend})
+        df = pd.DataFrame(_rows)
+        df["ctr"]  = (df["clicks"] / df["impressions"].replace(0, 1) * 100).round(2)
+        df["cpc"]  = (df["spend"]  / df["clicks"].replace(0, 1)).round(2)
+        df["roas"] = (df["conversions"] * 50 / df["spend"].replace(0, 1)).round(2)
+        st.markdown(
+            '<div style="display:inline-flex;align-items:center;gap:8px;'
+            'background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.25);'
+            'border-radius:20px;padding:4px 14px;margin-bottom:20px;font-size:11px;color:#a78bfa;font-weight:600">'
+            '✦ Demo data — connect your ad account to see real metrics'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+    if not df.empty:
         col_f1, col_f2 = st.columns(2)
         with col_f1:
             brand_filter = st.selectbox("Filter by Brand", ["All Brands"] + df["brand"].dropna().unique().tolist())
@@ -2024,29 +2063,35 @@ elif page == "Campaign Analytics":
             chart = alt.Chart(daily).mark_area(
                 color=alt.Gradient(
                     gradient="linear",
-                    stops=[alt.GradientStop(color="#1f6feb", offset=0),
-                           alt.GradientStop(color="#1f6feb22", offset=1)],
+                    stops=[alt.GradientStop(color="#7c3aed", offset=0),
+                           alt.GradientStop(color="#7c3aed11", offset=1)],
                     x1=1, x2=1, y1=1, y2=0,
                 ),
-                line={"color": "#388bfd"}, opacity=0.8,
+                line={"color": "#a78bfa"}, opacity=0.85,
             ).encode(
                 x=alt.X("date:T", title="Date"),
                 y=alt.Y("impressions:Q", title="Impressions"),
                 tooltip=["date:T", "impressions:Q", "clicks:Q"],
-            ).properties(height=250)
+            ).properties(height=250).configure_axis(
+                grid=False, labelColor="#8080a8", titleColor="#8080a8",
+            ).configure_view(strokeWidth=0)
             st.altair_chart(chart, use_container_width=True)
 
         with c2:
-            st.markdown("**CTR by Ad**")
-            ctr_data = df[["impressions", "clicks", "ctr"]].copy().reset_index(drop=True)
-            ctr_data["ad"] = [f"Ad #{i+1}" for i in range(len(ctr_data))]
-            bar = alt.Chart(ctr_data).mark_bar(
-                color="#388bfd", cornerRadiusTopLeft=4, cornerRadiusTopRight=4,
+            st.markdown("**CTR by Brand**")
+            ctr_brand = df.groupby("brand")["ctr"].mean().reset_index()
+            bar = alt.Chart(ctr_brand).mark_bar(
+                cornerRadiusTopLeft=6, cornerRadiusTopRight=6,
             ).encode(
-                x=alt.X("ad:N", sort="-y", title="Ad"),
-                y=alt.Y("ctr:Q", title="CTR (%)"),
-                tooltip=["ad:N", "ctr:Q", "clicks:Q"],
-            ).properties(height=250)
+                x=alt.X("brand:N", sort="-y", title="Brand"),
+                y=alt.Y("ctr:Q", title="Avg CTR (%)"),
+                color=alt.Color("brand:N", scale=alt.Scale(
+                    range=["#7c3aed", "#06b6d4", "#f43f5e", "#22c55e", "#f59e0b"]
+                ), legend=None),
+                tooltip=["brand:N", alt.Tooltip("ctr:Q", format=".2f")],
+            ).properties(height=250).configure_axis(
+                grid=False, labelColor="#8080a8", titleColor="#8080a8",
+            ).configure_view(strokeWidth=0)
             st.altair_chart(bar, use_container_width=True)
 
         st.markdown("---")
@@ -2061,22 +2106,54 @@ elif page == "Campaign Analytics":
 elif page == "Saved Ads Library":
     page_header("Saved Ads Library", "Browse all ad creatives you've saved locally.")
 
-    col_f1, col_f2 = st.columns(2)
-    with col_f1:
+    lib_f1, lib_f2, lib_f3, lib_f4 = st.columns(4)
+    with lib_f1:
         lib_brand_filter = st.selectbox("Brand", ["All Brands"] + brand_names, key="lib_brand")
-    with col_f2:
+    with lib_f2:
         lib_mode_filter = st.selectbox("Mode", ["All Modes", "ugc-generated", "data-driven", "competitor-reverse"], key="lib_mode")
 
     filter_id = None
     if lib_brand_filter != "All Brands":
         filter_id = brand_ids[brand_names.index(lib_brand_filter)]
 
+    # Product filter — build product list for selected brand
+    _lib_products = get_products(filter_id) if filter_id else get_products()
+    _lib_prod_names = ["All Products"] + [p["name"] for p in _lib_products]
+    with lib_f3:
+        lib_product_filter = st.selectbox("Product", _lib_prod_names, key="lib_product")
+
     ads = get_saved_ads(brand_id=filter_id)
     if lib_mode_filter != "All Modes":
         ads = [a for a in ads if a["mode"] == lib_mode_filter]
 
+    # Product filter: match slug in headline/filename
+    if lib_product_filter != "All Products":
+        _prod_slug = _slugify(lib_product_filter)
+        ads = [a for a in ads if _prod_slug in (_slugify(a.get("headline") or ""))]
+
+    # Date filter
+    if ads:
+        _dates = [a["created_at"][:10] for a in ads if a.get("created_at")]
+        _min_d = min(_dates) if _dates else None
+        _max_d = max(_dates) if _dates else None
+    else:
+        _min_d = _max_d = None
+
+    with lib_f4:
+        if _min_d and _max_d:
+            import datetime as _dt
+            _d0 = _dt.date.fromisoformat(_min_d)
+            _d1 = _dt.date.fromisoformat(_max_d)
+            lib_date_filter = st.date_input("Date range", value=(_d0, _d1), key="lib_date")
+        else:
+            lib_date_filter = None
+
+    if lib_date_filter and isinstance(lib_date_filter, (list, tuple)) and len(lib_date_filter) == 2:
+        _df0, _df1 = lib_date_filter
+        ads = [a for a in ads if a.get("created_at") and _df0 <= _dt.date.fromisoformat(a["created_at"][:10]) <= _df1]
+
     if not ads:
-        st.info("No saved ads yet. Generate some ads and click 💾 Save.")
+        st.info("No saved ads match the selected filters.")
     else:
         st.caption(f"{len(ads)} ad(s) found")
         st.markdown(IMAGE_GRID_CSS, unsafe_allow_html=True)
@@ -2085,25 +2162,37 @@ elif page == "Saved Ads Library":
             with cols[i % 3]:
                 image_url = ad["image_url"] or ""
                 filename  = ad["headline"] or f"ad_{ad['id']}"
+                created   = ad.get("created_at", "")[:10]
                 if image_url:
                     render_ad_image(image_url, f"analytics_{i}")
-                    st.markdown(f'<div style="margin:6px 0 10px;padding:6px 8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:6px;font-family:\'JetBrains Mono\',monospace;font-size:10px;color:#8080a8;word-break:break-all;line-height:1.4">{filename}</div>', unsafe_allow_html=True)
                 else:
                     st.markdown(
                         f'<div class="img-placeholder">📸 Creative<br>'
-                        f'<span style="font-size:11px;opacity:.6">Saved {ad["created_at"][:10]}</span></div>',
+                        f'<span style="font-size:11px;opacity:.6">Saved {created}</span></div>',
                         unsafe_allow_html=True,
                     )
-                _body_html = f"<div class='ad-body'>{ad['body']}</div>" if ad["body"] else ""
+                # META tag + filename — outside image
                 st.markdown(
-                    f'<div class="ad-preview">'
-                    f'<span class="platform-badge">{ad["platform"]}</span>'
+                    f'<div style="display:flex;align-items:center;gap:6px;margin:8px 0 4px">'
+                    f'<span style="display:inline-block;background:rgba(124,58,237,0.15);color:#a78bfa;'
+                    f'font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;'
+                    f'border:1px solid rgba(124,58,237,0.25);letter-spacing:0.5px;white-space:nowrap">'
+                    f'{ad["platform"]}</span>'
+                    f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;color:#404060;'
+                    f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{filename}</span>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+                # Stats row
+                _body_html = f"<div class='ad-body'>{ad['body']}</div>" if ad.get("body") else ""
+                st.markdown(
                     f'{_body_html}'
-                    f'<div style="font-size:12px;color:#8b949e">'
-                    f'{ad["impressions"]:,} imp &nbsp;·&nbsp;'
-                    f'{ad["clicks"]:,} clicks &nbsp;·&nbsp;'
-                    f'{ad["conversions"]:,} conv'
-                    f'</div></div>',
+                    f'<div style="font-size:11px;color:#8080a8;margin-bottom:8px">'
+                    f'<span style="color:#404060">{created}</span>'
+                    f'&nbsp;·&nbsp;{ad["impressions"]:,} imp'
+                    f'&nbsp;·&nbsp;{ad["clicks"]:,} clk'
+                    f'&nbsp;·&nbsp;{ad["conversions"]:,} conv'
+                    f'</div>',
                     unsafe_allow_html=True,
                 )
                 if image_url:
@@ -2112,7 +2201,7 @@ elif page == "Saved Ads Library":
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 4 — HISTORY
 # ═══════════════════════════════════════════════════════════════════════════════
-elif page == "📋 History":
+elif page == "History":
     h_col1, h_col2 = st.columns([6, 1])
     with h_col1:
         page_header("Generation History", "All past ad generation jobs and their results.")
@@ -2258,7 +2347,7 @@ elif page == "Brands":
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 6 — PRODUCTS
 # ═══════════════════════════════════════════════════════════════════════════════
-elif page == "📦 Products":
+elif page == "Products":
     page_header("Products", "Manage product profiles used in ad generation.")
 
     # ── Add new product form ──────────────────────────────────────────────────
