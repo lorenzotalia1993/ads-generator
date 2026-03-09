@@ -1011,6 +1011,7 @@ def render_output_panel(key_prefix: str = "dd"):
         except Exception:
             poll_data = {"status": "processing"}
 
+        MAX_POLLS = 40  # ~3 min 20 sec timeout
         if poll_data.get("status") == "done":
             meta   = st.session_state.pending_dd_meta
             images = attach_filenames(
@@ -1037,9 +1038,25 @@ def render_output_panel(key_prefix: str = "dd"):
             st.session_state.poll_count               = 0
             inject_generation_guard(False)
             st.rerun()
+        elif st.session_state.poll_count >= MAX_POLLS:
+            st.error("⏱️ Timeout — la generazione sta impiegando troppo. Controlla la History quando le immagini sono pronte.")
+            if st.button("🔄 Reset", key="dd_reset_timeout"):
+                st.session_state.generating     = False
+                st.session_state.job_submitted  = False
+                st.session_state.poll_count     = 0
+                st.session_state.pending_ugc_id = None
+                inject_generation_guard(False)
+                st.rerun()
         else:
+            if st.button("✕ Cancel", key="dd_cancel_btn", type="secondary"):
+                st.session_state.generating     = False
+                st.session_state.job_submitted  = False
+                st.session_state.poll_count     = 0
+                st.session_state.pending_ugc_id = None
+                inject_generation_guard(False)
+                st.rerun()
             st.session_state.poll_count += 1
-            time.sleep(8)
+            time.sleep(5)
             st.rerun()
 
     elif st.session_state.get("last_results"):
@@ -1580,9 +1597,25 @@ if page == "Generate Ads":
                     st.session_state.comp_poll_count               = 0
                     inject_generation_guard(False)
                     st.rerun()
+                elif st.session_state.comp_poll_count >= 40:
+                    st.error("⏱️ Timeout — controlla la History quando le immagini sono pronte.")
+                    if st.button("🔄 Reset", key="comp_reset_timeout"):
+                        st.session_state.generating          = False
+                        st.session_state.comp_job_submitted  = False
+                        st.session_state.comp_poll_count     = 0
+                        st.session_state.pending_comp_ugc_id = None
+                        inject_generation_guard(False)
+                        st.rerun()
                 else:
+                    if st.button("✕ Cancel", key="comp_cancel_btn", type="secondary"):
+                        st.session_state.generating          = False
+                        st.session_state.comp_job_submitted  = False
+                        st.session_state.comp_poll_count     = 0
+                        st.session_state.pending_comp_ugc_id = None
+                        inject_generation_guard(False)
+                        st.rerun()
                     st.session_state.comp_poll_count += 1
-                    time.sleep(8)
+                    time.sleep(5)
                     st.rerun()
 
             elif st.session_state.get("last_comp_results"):
