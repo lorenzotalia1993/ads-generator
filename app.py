@@ -1251,7 +1251,7 @@ def render_manual_prompt_tab(brands):
             render_score_badge(score_result)
 
         filled = [p for p in prompts if len(p.strip()) > 10]
-        ready  = len(filled) == num_variants and all(s >= 20 for s in all_scores)
+        ready  = len(filled) == num_variants
 
         st.markdown("<div style='margin-top:20px'></div>", unsafe_allow_html=True)
         if len(filled) < num_variants:
