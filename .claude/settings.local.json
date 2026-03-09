@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install streamlit pandas altair requests 2>&1)",
+      "Bash(python3 -m pip install Pillow 2>&1)",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('/Users/lorenzotalia/ads-dashboard/app.py'\\).read\\(\\)\\); print\\('Syntax OK'\\)\")",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('app.py'\\).read\\(\\)\\); print\\('Syntax OK'\\)\")",
+      "Bash(mkdir -p /Users/lorenzotalia/ads-dashboard/.streamlit && cat > /Users/lorenzotalia/ads-dashboard/.streamlit/config.toml << 'EOF'\n[ui]\nhideSidebarNav = false\n\n[theme]\nbase = \"dark\"\nEOF)"
+    ]
+  }
+}
