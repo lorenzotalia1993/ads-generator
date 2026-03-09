@@ -404,6 +404,7 @@ WEBHOOK_URL              = "https://lorenzotalia.app.n8n.cloud/webhook/d0037d38-
 COMPETITOR_WEBHOOK_URL   = "https://lorenzotalia.app.n8n.cloud/webhook/competitor-reverse-v1"
 MANUAL_WEBHOOK_URL       = "https://lorenzotalia.app.n8n.cloud/webhook/manual-prompt-v1"
 RESULTS_POLL_URL         = "https://lorenzotalia.app.n8n.cloud/webhook/results-dd"
+MANUAL_RESULTS_URL       = "https://lorenzotalia.app.n8n.cloud/webhook/results-manual"
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 def convert_gdrive_url(url: str) -> str:
@@ -1005,8 +1006,9 @@ def render_output_panel(key_prefix: str = "dd"):
                         ugc_id = _new
                 except Exception:
                     pass
+        poll_url = MANUAL_RESULTS_URL if ugc_id.startswith("manual_") else RESULTS_POLL_URL
         try:
-            poll_resp = requests.get(RESULTS_POLL_URL, params={"ugc_id": ugc_id}, timeout=10)
+            poll_resp = requests.get(poll_url, params={"ugc_id": ugc_id}, timeout=10)
             poll_data = poll_resp.json()
         except Exception:
             poll_data = {"status": "processing"}
