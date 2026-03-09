@@ -23,19 +23,42 @@ st.set_page_config(
 # ─── Global styles ────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif !important; }
-
-/* ── Background ── */
-.stApp { background: #0d1117 !important; }
-
-[data-testid="stSidebar"] {
-    background: #090c12 !important;
-    border-right: 1px solid #1c2030 !important;
+/* ── CSS Variables ── */
+:root {
+  --bg:     #07070f;
+  --bg-s:   #0c0c1a;
+  --bg-e:   rgba(255,255,255,0.03);
+  --bd:     rgba(255,255,255,0.07);
+  --bd-h:   rgba(255,255,255,0.14);
+  --p:      #7c3aed;
+  --p2:     #a78bfa;
+  --cyan:   #06b6d4;
+  --rose:   #f43f5e;
+  --green:  #22c55e;
+  --amber:  #f59e0b;
+  --tx:     #e8e8f8;
+  --tx2:    #8080a8;
+  --tx3:    #404060;
+  --r:      14px;
+  --r-sm:   8px;
 }
 
-.main .block-container { padding: 2rem 2.5rem !important; max-width: 1200px !important; }
+html, body, [class*="css"] {
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif !important;
+  letter-spacing: -0.01em;
+}
+
+/* ── Background ── */
+.stApp { background: var(--bg) !important; }
+
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, rgba(124,58,237,0.07) 0%, var(--bg) 45%) !important;
+    border-right: 1px solid var(--bd) !important;
+}
+
+.main .block-container { padding: 2rem 2.5rem !important; max-width: 1280px !important; }
 
 #MainMenu, footer,
 [data-testid="stDecoration"],
@@ -45,342 +68,345 @@ html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif !im
 .page-header h1 a, h1 a, h2 a, h3 a,
 [data-testid="stMarkdownContainer"] h1 a { display: none !important; }
 
-/* Hide native collapse button — we use a custom one */
+/* Hide native collapse button */
 [data-testid="stSidebarCollapseButton"],
 button[kind="header"],
-[data-testid="collapsedControl"] {
-    display: none !important;
-}
-/* Custom sidebar toggle button */
-#sidebar-toggle-btn {
-    position: fixed;
-    top: 14px;
-    left: 14px;
-    z-index: 999999;
-    width: 34px;
-    height: 34px;
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 8px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #8b949e;
-    font-size: 16px;
-    transition: background 0.15s, color 0.15s;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-}
-#sidebar-toggle-btn:hover {
-    background: #21262d;
-    color: #f0f6fc;
-}
+[data-testid="collapsedControl"] { display: none !important; }
 
 /* ── Typography ── */
-h1 { font-size: 22px !important; font-weight: 700 !important; color: #f0f6fc !important; margin: 0 0 4px !important; }
-h2 { font-size: 15px !important; font-weight: 600 !important; color: #e6edf3 !important; }
-h3 { font-size: 13px !important; font-weight: 500 !important; color: #7d8590 !important; }
+h1 {
+  font-family: 'Bricolage Grotesque', sans-serif !important;
+  font-size: 22px !important; font-weight: 700 !important;
+  color: var(--tx) !important; margin: 0 0 4px !important;
+  letter-spacing: -0.03em !important;
+}
+h2 {
+  font-family: 'Bricolage Grotesque', sans-serif !important;
+  font-size: 15px !important; font-weight: 600 !important;
+  color: var(--tx) !important; letter-spacing: -0.02em !important;
+}
+h3 { font-size: 12px !important; font-weight: 500 !important; color: var(--tx2) !important; }
 
 /* ── Page header block ── */
-.page-header { margin-bottom: 28px; padding-bottom: 18px; border-bottom: 1px solid #1c2030; }
-.page-header h1 { font-size: 24px !important; font-weight: 700 !important; color: #f0f6fc !important; margin: 0 0 4px !important; }
-.page-header p  { font-size: 13px; color: #7d8590; margin: 0; }
+.page-header {
+  margin-bottom: 32px; padding-bottom: 22px;
+  border-bottom: 1px solid var(--bd);
+  position: relative;
+}
+.page-header::after {
+  content: ''; position: absolute; bottom: -1px; left: 0;
+  width: 72px; height: 2px;
+  background: linear-gradient(90deg, var(--p), var(--cyan));
+  border-radius: 2px;
+}
+.page-header h1 {
+  font-family: 'Bricolage Grotesque', sans-serif !important;
+  font-size: 26px !important; font-weight: 800 !important;
+  color: var(--tx) !important; margin: 0 0 6px !important;
+  letter-spacing: -0.04em !important;
+}
+.page-header p { font-size: 13px; color: var(--tx2); margin: 0; }
 
 .sec-label {
-    font-size: 10px !important; font-weight: 600 !important;
-    text-transform: uppercase !important; letter-spacing: 0.9px !important;
-    color: #3d444d !important; margin-bottom: 8px !important; display: block;
+    font-size: 10px !important; font-weight: 700 !important;
+    text-transform: uppercase !important; letter-spacing: 1.2px !important;
+    color: var(--tx3) !important; margin-bottom: 10px !important; display: block;
 }
 
 /* ── Sidebar: hide radio circles, style as nav items ── */
-[data-testid="stSidebar"] [data-testid="stRadio"] > div { gap: 2px !important; }
+[data-testid="stSidebar"] [data-testid="stRadio"] > div { gap: 3px !important; }
 
 [data-testid="stSidebar"] [data-testid="stRadio"] label {
     display: flex !important; align-items: center !important;
-    width: 100% !important; padding: 8px 10px !important;
-    border-radius: 8px !important; margin: 0 !important;
+    width: 100% !important; padding: 9px 12px !important;
+    border-radius: 10px !important; margin: 0 !important;
     cursor: pointer !important;
-    color: #636e7b !important; font-size: 13px !important; font-weight: 500 !important;
-    transition: all 0.12s ease !important; border-left: 2px solid transparent !important;
+    color: var(--tx2) !important; font-size: 13px !important; font-weight: 500 !important;
+    transition: all 0.15s ease !important;
+    border: 1px solid transparent !important;
     box-sizing: border-box !important;
 }
 [data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
-    background: #141920 !important; color: #cdd9e5 !important;
+    background: rgba(255,255,255,0.04) !important;
+    color: var(--tx) !important; border-color: var(--bd) !important;
 }
 [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
-    background: #161d2e !important; color: #e6edf3 !important;
-    border-left: 2px solid #2563eb !important; font-weight: 600 !important;
+    background: linear-gradient(135deg, rgba(124,58,237,0.16) 0%, rgba(6,182,212,0.07) 100%) !important;
+    color: var(--tx) !important;
+    border-color: rgba(124,58,237,0.3) !important;
+    font-weight: 600 !important;
 }
-/* Hide the radio circle indicator */
 [data-testid="stSidebar"] [data-testid="stRadio"] [data-testid="stMarkdownContainer"] p { margin: 0; }
 [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radio"],
-[data-testid="stSidebar"] [data-testid="stRadio"] span[data-baseweb="radio"] > div:first-child {
-    display: none !important;
-}
-[data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child {
-    display: none !important;
-}
+[data-testid="stSidebar"] [data-testid="stRadio"] span[data-baseweb="radio"] > div:first-child,
+[data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child { display: none !important; }
 [data-testid="stSidebar"] * { color: inherit !important; }
 
 /* ── Cards ── */
-.kie-card { background: #161b22; border: 1px solid #21262d; border-radius: 10px; padding: 16px; }
-.kie-card-red { background: #161b22; border: 1px solid #2d1515; border-radius: 10px; padding: 16px; }
-.card { background: #161b22; border: 1px solid #21262d; border-radius: 10px; padding: 16px 20px; margin-bottom: 12px; }
-.card-title { font-size: 10px; font-weight: 600; color: #484f58; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
-.card-value { font-size: 28px; font-weight: 700; color: #e6edf3; }
+.kie-card {
+  background: var(--bg-e); border: 1px solid var(--bd);
+  border-radius: var(--r); padding: 18px;
+  backdrop-filter: blur(12px);
+}
+.kie-card-red {
+  background: rgba(244,63,94,0.04); border: 1px solid rgba(244,63,94,0.2);
+  border-radius: var(--r); padding: 18px;
+}
+.card {
+  background: var(--bg-e); border: 1px solid var(--bd);
+  border-radius: var(--r); padding: 18px 22px; margin-bottom: 12px;
+}
+.card-title { font-size: 10px; font-weight: 700; color: var(--tx3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.card-value {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 34px; font-weight: 800; color: var(--tx); letter-spacing: -0.04em;
+}
 .card-delta { font-size: 12px; margin-top: 4px; }
-.delta-up   { color: #3fb950; }
-.delta-down { color: #f85149; }
-.history-card { background: #161b22; border: 1px solid #21262d; border-radius: 10px; padding: 14px 18px; margin-bottom: 8px; }
-.history-meta { font-size: 12px; color: #7d8590; margin-top: 4px; }
-.brand-card { background: #161b22; border: 1px solid #21262d; border-radius: 10px; padding: 14px 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; }
-.brand-avatar { width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg,#2563eb,#3b82f6); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: #fff; flex-shrink: 0; }
-.brand-info h4 { margin: 0 0 4px; color: #e6edf3; font-size: 14px; }
-.brand-info p  { margin: 0; color: #7d8590; font-size: 12px; }
-.product-card { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; }
-.product-preview { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 14px; margin-bottom: 14px; }
-.ad-preview { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 14px; margin-bottom: 10px; }
-.platform-badge { display: inline-block; background: #1f3460; color: #3b82f6; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-bottom: 8px; }
-.ad-body { font-size: 13px; color: #7d8590; margin-bottom: 8px; line-height: 1.5; }
-.section-header { font-size: 22px; font-weight: 700; color: #f0f6fc; margin-bottom: 4px; }
-.section-sub    { font-size: 13px; color: #7d8590; margin-bottom: 24px; }
-.img-placeholder { background: #161b22; border: 1px dashed #30363d; border-radius: 8px; height: 180px; display: flex; align-items: center; justify-content: center; color: #484f58; font-size: 13px; font-weight: 500; text-align: center; }
-.loading-box { background: #161b22; border: 1px solid #21262d; border-radius: 10px; padding: 40px 24px; text-align: center; margin: 16px 0; }
-.loading-title { font-size: 18px; font-weight: 600; color: #e6edf3; margin-bottom: 8px; }
-.loading-sub   { font-size: 13px; color: #7d8590; }
+.delta-up   { color: var(--green); }
+.delta-down { color: var(--rose); }
+.history-card {
+  background: var(--bg-e); border: 1px solid var(--bd);
+  border-radius: var(--r); padding: 16px 20px; margin-bottom: 8px;
+}
+.history-meta { font-size: 12px; color: var(--tx2); margin-top: 4px; }
+.brand-card {
+  background: var(--bg-e); border: 1px solid var(--bd);
+  border-radius: var(--r); padding: 14px 18px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 14px;
+}
+.brand-avatar {
+  width: 44px; height: 44px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--p), var(--cyan));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.brand-info h4 { margin: 0 0 4px; color: var(--tx); font-size: 14px; font-weight: 600; }
+.brand-info p  { margin: 0; color: var(--tx2); font-size: 12px; }
+.product-card {
+  background: var(--bg-e); border: 1px solid var(--bd);
+  border-radius: var(--r-sm); padding: 12px 16px; margin-bottom: 8px;
+}
+.product-preview {
+  background: var(--bg-e); border: 1px solid var(--bd);
+  border-radius: var(--r-sm); padding: 16px; margin-bottom: 14px;
+}
+.ad-preview {
+  background: var(--bg-e); border: 1px solid var(--bd);
+  border-radius: var(--r-sm); padding: 14px; margin-bottom: 10px;
+}
+.platform-badge {
+  display: inline-block; background: rgba(124,58,237,0.15);
+  color: var(--p2); font-size: 10px; font-weight: 700;
+  padding: 3px 10px; border-radius: 20px; margin-bottom: 8px;
+  border: 1px solid rgba(124,58,237,0.25); letter-spacing: 0.5px;
+}
+.ad-body { font-size: 13px; color: var(--tx2); margin-bottom: 8px; line-height: 1.6; }
+.section-header {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 24px; font-weight: 800; color: var(--tx); margin-bottom: 4px;
+  letter-spacing: -0.04em;
+}
+.section-sub { font-size: 13px; color: var(--tx2); margin-bottom: 24px; }
+.img-placeholder {
+  background: var(--bg-e); border: 1px dashed rgba(255,255,255,0.09);
+  border-radius: var(--r-sm); height: 180px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--tx3); font-size: 13px; font-weight: 500; text-align: center;
+}
+.loading-box {
+  background: var(--bg-e); border: 1px solid var(--bd);
+  border-radius: var(--r); padding: 48px 24px; text-align: center; margin: 16px 0;
+}
+.loading-title {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 20px; font-weight: 700; color: var(--tx); margin-bottom: 8px;
+  letter-spacing: -0.03em;
+}
+.loading-sub { font-size: 13px; color: var(--tx2); }
 
 /* ── Inputs ── */
 [data-testid="stTextInput"] input,
 [data-testid="stTextArea"] textarea {
-    background: #161b22 !important; border: 1px solid #30363d !important;
-    border-radius: 6px !important; color: #e6edf3 !important; font-size: 13px !important;
+    background: rgba(255,255,255,0.03) !important; border: 1px solid var(--bd) !important;
+    border-radius: var(--r-sm) !important; color: var(--tx) !important;
+    font-size: 13px !important; font-family: 'Plus Jakarta Sans', sans-serif !important;
+    transition: border-color 0.2s, box-shadow 0.2s !important;
 }
 [data-testid="stTextInput"] input:focus,
 [data-testid="stTextArea"] textarea:focus {
-    border-color: #2563eb !important; box-shadow: 0 0 0 2px rgba(37,99,235,0.15) !important;
+    border-color: var(--p) !important;
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.12) !important;
+    background: rgba(124,58,237,0.03) !important;
 }
 [data-testid="stTextInput"] label,
 [data-testid="stTextArea"] label,
 [data-testid="stSelectbox"] label,
-[data-testid="stSlider"] label { color: #636e7b !important; font-size: 12px !important; }
-[data-testid="stSelectbox"] > div > div {
-    background: #161b22 !important; border: 1px solid #30363d !important;
-    border-radius: 6px !important; color: #e6edf3 !important;
+[data-testid="stSlider"] label {
+  color: var(--tx2) !important; font-size: 12px !important; font-weight: 500 !important;
 }
-[data-testid="stSlider"] [role="slider"] { background: #2563eb !important; }
+[data-testid="stSelectbox"] > div > div {
+    background: rgba(255,255,255,0.03) !important; border: 1px solid var(--bd) !important;
+    border-radius: var(--r-sm) !important; color: var(--tx) !important;
+    transition: border-color 0.2s !important;
+}
+[data-testid="stSelectbox"] > div > div:hover { border-color: var(--bd-h) !important; }
+[data-testid="stSlider"] [role="slider"] {
+  background: var(--p) !important; box-shadow: 0 0 0 3px rgba(124,58,237,0.25) !important;
+}
 
 /* ── Buttons ── */
 [data-testid="stButton"] button[kind="primary"] {
-    background: #2563eb !important; border: none !important;
-    border-radius: 24px !important; color: white !important;
-    font-size: 13px !important; font-weight: 600 !important;
-    height: 44px !important; letter-spacing: 0.2px !important;
-    transition: all 0.15s ease !important;
+    background: linear-gradient(135deg, var(--p) 0%, #4f46e5 50%, var(--cyan) 100%) !important;
+    background-size: 200% 200% !important;
+    border: none !important; border-radius: 50px !important; color: white !important;
+    font-size: 13px !important; font-weight: 700 !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    height: 44px !important; letter-spacing: 0.1px !important;
+    transition: all 0.25s ease !important;
+    box-shadow: 0 0 24px rgba(124,58,237,0.3), inset 0 1px 0 rgba(255,255,255,0.12) !important;
 }
 [data-testid="stButton"] button[kind="primary"]:hover {
-    background: #1d4ed8 !important; transform: translateY(-1px) !important;
-    box-shadow: 0 4px 14px rgba(37,99,235,0.35) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 32px rgba(124,58,237,0.45), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+    filter: brightness(1.1) !important;
 }
+[data-testid="stButton"] button[kind="primary"]:active { transform: translateY(0) !important; }
+
 [data-testid="stButton"] button[kind="secondary"] {
-    background: transparent !important; border: 1px solid #30363d !important;
-    border-radius: 8px !important; color: #7d8590 !important;
-    font-size: 12px !important; height: 36px !important;
+    background: transparent !important; border: 1px solid var(--bd-h) !important;
+    border-radius: var(--r-sm) !important; color: var(--tx2) !important;
+    font-size: 12px !important; font-weight: 500 !important; height: 36px !important;
+    transition: all 0.15s ease !important;
 }
 [data-testid="stButton"] button[kind="secondary"]:hover {
-    border-color: #7d8590 !important; color: #e6edf3 !important;
+    border-color: var(--p) !important; color: var(--tx) !important;
+    background: rgba(124,58,237,0.08) !important;
 }
+
 [data-testid="stDownloadButton"] button {
-    background: #161b22 !important; border: 1px solid #30363d !important;
-    border-radius: 8px !important; color: #7d8590 !important;
-    font-size: 12px !important; height: 36px !important;
+    background: rgba(255,255,255,0.04) !important; border: 1px solid var(--bd) !important;
+    border-radius: var(--r-sm) !important; color: var(--tx2) !important;
+    font-size: 12px !important; height: 36px !important; transition: all 0.15s ease !important;
 }
 [data-testid="stDownloadButton"] button:hover {
-    border-color: #2563eb !important; color: #2563eb !important;
+    border-color: var(--cyan) !important; color: var(--cyan) !important;
+    background: rgba(6,182,212,0.08) !important;
 }
 
 /* ── Tabs ── */
 [data-testid="stTabs"] [data-testid="stTab"] {
     background: transparent !important; border: none !important;
-    color: #636e7b !important; font-size: 13px !important;
-    font-weight: 500 !important; padding: 8px 18px !important;
-    border-radius: 6px 6px 0 0 !important;
+    color: var(--tx2) !important; font-size: 13px !important;
+    font-weight: 500 !important; padding: 10px 20px !important;
+    border-radius: 8px 8px 0 0 !important; transition: all 0.15s !important;
+}
+[data-testid="stTabs"] [data-testid="stTab"]:hover {
+  color: var(--tx) !important; background: rgba(255,255,255,0.03) !important;
 }
 [data-testid="stTabs"] [data-testid="stTab"][aria-selected="true"] {
-    color: #e6edf3 !important; border-bottom: 2px solid #2563eb !important;
-    font-weight: 600 !important;
+    color: var(--tx) !important; font-weight: 700 !important;
+    border-bottom: 2px solid var(--p) !important;
 }
 [data-testid="stTabs"] [role="tablist"] {
-    border-bottom: 1px solid #21262d !important; gap: 4px !important;
+    border-bottom: 1px solid var(--bd) !important; gap: 4px !important;
 }
 
 /* ── Expander ── */
 [data-testid="stExpander"] {
-    background: #161b22 !important; border: 1px solid #21262d !important; border-radius: 8px !important;
+    background: var(--bg-e) !important; border: 1px solid var(--bd) !important;
+    border-radius: var(--r-sm) !important;
 }
-[data-testid="stExpander"] summary { color: #7d8590 !important; font-size: 12px !important; }
+[data-testid="stExpander"] summary {
+  color: var(--tx2) !important; font-size: 12px !important; font-weight: 500 !important;
+}
 
 /* ── Alerts ── */
 [data-testid="stAlert"] {
-    background: #161b22 !important; border: 1px solid #30363d !important;
-    border-radius: 8px !important; font-size: 12px !important;
+    background: rgba(124,58,237,0.06) !important; border: 1px solid rgba(124,58,237,0.2) !important;
+    border-radius: var(--r-sm) !important; font-size: 12px !important;
 }
 
 /* ── Captions ── */
 [data-testid="stCaptionContainer"] {
-    color: #484f58 !important; font-family: 'JetBrains Mono', monospace !important; font-size: 10px !important;
+    color: var(--tx3) !important; font-family: 'JetBrains Mono', monospace !important;
+    font-size: 10px !important;
 }
 
 /* ── Images ── */
 [data-testid="stImage"] img {
-    border-radius: 8px !important; object-fit: contain !important;
-    background: #0d1117 !important; width: 100% !important;
+    border-radius: var(--r-sm) !important; object-fit: contain !important; width: 100% !important;
+}
+
+/* ── Progress bar ── */
+[data-testid="stProgressBar"] > div > div {
+  background: linear-gradient(90deg, var(--p), var(--cyan)) !important; border-radius: 4px !important;
+}
+[data-testid="stProgressBar"] > div {
+  background: rgba(255,255,255,0.06) !important; border-radius: 4px !important;
+}
+
+/* ── Dataframe ── */
+[data-testid="stDataFrame"] {
+  border: 1px solid var(--bd) !important; border-radius: var(--r-sm) !important;
+  overflow: hidden !important;
 }
 
 /* ── Pills ── */
 .kie-pill {
-    display: inline-block; background: #1c2333; border: 1px solid #21262d;
-    color: #7d8590; font-size: 10px; padding: 2px 8px; border-radius: 20px;
+    display: inline-block; background: rgba(255,255,255,0.05); border: 1px solid var(--bd);
+    color: var(--tx2); font-size: 10px; padding: 2px 9px; border-radius: 20px;
     margin: 1px 2px 1px 0; white-space: nowrap; max-width: 150px;
     overflow: hidden; text-overflow: ellipsis;
 }
 
 /* ── Placeholders ── */
 .kie-img-placeholder {
-    height: 120px; background: #161b22; border: 1px dashed #30363d;
-    border-radius: 8px; display: flex; align-items: center;
-    justify-content: center; color: #484f58; font-size: 12px; margin: 8px 0;
+    height: 120px; background: var(--bg-e); border: 1px dashed rgba(255,255,255,0.08);
+    border-radius: var(--r-sm); display: flex; align-items: center;
+    justify-content: center; color: var(--tx3); font-size: 12px; margin: 8px 0;
 }
 
 /* ── Dividers ── */
-.kie-divider { border: none; border-top: 1px solid #21262d; margin: 16px 0; }
+.kie-divider { border: none; border-top: 1px solid var(--bd); margin: 18px 0; }
 
-/* ════════════════════════════════════════
-   MOBILE RESPONSIVE
-   ════════════════════════════════════════ */
-
-/* Tablet + Mobile: stack columns */
+/* ── Responsive ── */
 @media (max-width: 900px) {
-    .main .block-container {
-        padding: 1.25rem 1.25rem !important;
-        max-width: 100% !important;
-    }
-
-    /* Stack every st.columns() vertically */
-    [data-testid="stHorizontalBlock"] {
-        flex-wrap: wrap !important;
-        gap: 8px !important;
-    }
+    .main .block-container { padding: 1.25rem 1.25rem !important; max-width: 100% !important; }
+    [data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; gap: 8px !important; }
     [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
-        width: 100% !important;
-        min-width: 100% !important;
-        flex: 1 1 100% !important;
+        width: 100% !important; min-width: 100% !important; flex: 1 1 100% !important;
     }
-
-    /* KPI grid: 2 per row on tablet */
-    .kpi-grid {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 10px !important;
-    }
-
-    /* Scrollable tabs */
-    [data-testid="stTabs"] [role="tablist"] {
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
-        flex-wrap: nowrap !important;
-    }
-    [data-testid="stTabs"] [data-testid="stTab"] {
-        white-space: nowrap !important;
-        padding: 8px 14px !important;
-        font-size: 13px !important;
-    }
-
-    /* Tables: horizontal scroll */
-    [data-testid="stDataFrame"], [data-testid="stTable"] {
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
-    }
-
-    /* Page header smaller */
-    .page-header h1 { font-size: 20px !important; }
-    .page-header { margin-bottom: 20px !important; padding-bottom: 14px !important; }
+    .kpi-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+    [data-testid="stTabs"] [role="tablist"] { overflow-x: auto !important; flex-wrap: nowrap !important; }
+    [data-testid="stTabs"] [data-testid="stTab"] { white-space: nowrap !important; padding: 8px 14px !important; }
+    [data-testid="stDataFrame"], [data-testid="stTable"] { overflow-x: auto !important; }
+    .page-header h1 { font-size: 22px !important; }
 }
 
-/* Mobile: single column, larger tap targets */
 @media (max-width: 600px) {
-    .main .block-container {
-        padding: 0.875rem !important;
-    }
-
-    /* Page header */
-    .page-header h1 { font-size: 18px !important; }
+    .main .block-container { padding: 0.875rem !important; }
+    .page-header h1 { font-size: 20px !important; }
     .page-header p  { font-size: 12px !important; }
-    .page-header    { margin-bottom: 16px !important; padding-bottom: 12px !important; }
-
-    /* Section labels */
+    .page-header    { margin-bottom: 18px !important; padding-bottom: 14px !important; }
     .sec-label { font-size: 9px !important; }
-
-    /* KPI cards: smaller values */
-    .card-value { font-size: 22px !important; }
-    .card { padding: 12px 14px !important; }
-
-    /* Input tap targets */
-    [data-testid="stTextInput"] input,
-    [data-testid="stTextArea"] textarea {
-        font-size: 16px !important;  /* prevents iOS zoom on focus */
-        padding: 10px 12px !important;
+    .card-value { font-size: 26px !important; }
+    .card { padding: 14px !important; }
+    [data-testid="stTextInput"] input, [data-testid="stTextArea"] textarea {
+        font-size: 16px !important; padding: 10px 12px !important;
     }
-    [data-testid="stSelectbox"] > div > div {
-        font-size: 16px !important;
-        min-height: 44px !important;
-    }
-
-    /* Primary button full width, bigger tap area */
-    [data-testid="stButton"] button[kind="primary"] {
-        width: 100% !important;
-        height: 48px !important;
-        font-size: 14px !important;
-    }
-    [data-testid="stButton"] button[kind="secondary"] {
-        height: 40px !important;
-    }
-    [data-testid="stDownloadButton"] button {
-        height: 40px !important;
-        font-size: 12px !important;
-    }
-
-    /* Expander */
-    [data-testid="stExpander"] summary {
-        font-size: 13px !important;
-        padding: 10px !important;
-    }
-
-    /* Nav items: bigger tap target on mobile */
-    [data-testid="stSidebar"] [data-testid="stRadio"] label {
-        padding: 12px 10px !important;
-        font-size: 14px !important;
-    }
-
-    /* Product preview card: slightly less padding */
+    [data-testid="stSelectbox"] > div > div { font-size: 16px !important; min-height: 44px !important; }
+    [data-testid="stButton"] button[kind="primary"] { width: 100% !important; height: 48px !important; font-size: 14px !important; }
+    [data-testid="stButton"] button[kind="secondary"] { height: 40px !important; }
+    [data-testid="stDownloadButton"] button { height: 40px !important; font-size: 12px !important; }
+    [data-testid="stExpander"] summary { font-size: 13px !important; padding: 10px !important; }
+    [data-testid="stSidebar"] [data-testid="stRadio"] label { padding: 12px 10px !important; font-size: 14px !important; }
     .kie-img-placeholder { height: 90px !important; font-size: 11px !important; }
-
-    /* Slider */
     [data-testid="stSlider"] { padding: 0 !important; }
-
-    /* Pills wrap cleanly */
     .kie-pill { font-size: 9px !important; padding: 2px 6px !important; }
-
-    /* History cards */
     .history-card { padding: 12px 14px !important; }
     .history-meta { font-size: 11px !important; }
-
-    /* Brand/product cards */
     .brand-card { padding: 12px 14px !important; gap: 10px !important; }
     .brand-avatar { width: 36px !important; height: 36px !important; font-size: 15px !important; }
-}
-
-/* Prevent text overflow on small screens */
-@media (max-width: 600px) {
     * { word-break: break-word; }
     .brand-info h4 { font-size: 13px !important; }
     .brand-info p  { font-size: 11px !important; }
@@ -425,27 +451,30 @@ st_components.html("""
       'z-index:999999',
       'width:34px',
       'height:34px',
-      'background:#161b22',
-      'border:1px solid #30363d',
-      'border-radius:8px',
+      'background:rgba(255,255,255,0.05)',
+      'border:1px solid rgba(255,255,255,0.1)',
+      'border-radius:10px',
       'cursor:pointer',
       'display:flex',
       'align-items:center',
       'justify-content:center',
-      'color:#8b949e',
-      'font-size:18px',
-      'box-shadow:0 2px 8px rgba(0,0,0,0.4)',
-      'transition:background 0.15s,color 0.15s,left 0.25s',
-      'user-select:none'
+      'color:rgba(255,255,255,0.4)',
+      'font-size:16px',
+      'box-shadow:0 4px 16px rgba(0,0,0,0.5)',
+      'transition:background 0.15s,color 0.15s,left 0.25s,border-color 0.15s',
+      'user-select:none',
+      'backdrop-filter:blur(8px)'
     ].join(';');
 
     outer.addEventListener('mouseover', function() {
-      outer.style.background = '#21262d';
-      outer.style.color = '#f0f6fc';
+      outer.style.background = 'rgba(124,58,237,0.2)';
+      outer.style.borderColor = 'rgba(124,58,237,0.4)';
+      outer.style.color = '#e8e8f8';
     });
     outer.addEventListener('mouseout', function() {
-      outer.style.background = '#161b22';
-      outer.style.color = '#8b949e';
+      outer.style.background = 'rgba(255,255,255,0.05)';
+      outer.style.borderColor = 'rgba(255,255,255,0.1)';
+      outer.style.color = 'rgba(255,255,255,0.4)';
     });
     outer.addEventListener('click', function() {
       // Click the real (hidden) Streamlit collapse button — this properly toggles sidebar state
@@ -836,15 +865,18 @@ def render_generating_placeholders(ugc_id: str, slot_names=None):
     st.markdown("""
     <style>
     @keyframes shimmer {
-        0%   { background-position: -400px 0; }
-        100% { background-position:  400px 0; }
+        0%   { background-position: -600px 0; }
+        100% { background-position:  600px 0; }
     }
     .shimmer-box {
-        background: linear-gradient(90deg,#161b22 25%,#1f2937 50%,#161b22 75%);
-        background-size: 400px 100%;
-        animation: shimmer 1.5s infinite;
-        border-radius: 10px;
-        border: 1px solid #21262d;
+        background: linear-gradient(90deg,
+            rgba(255,255,255,0.02) 25%,
+            rgba(124,58,237,0.06) 50%,
+            rgba(255,255,255,0.02) 75%);
+        background-size: 600px 100%;
+        animation: shimmer 1.8s infinite;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,0.07);
     }
     @keyframes pulse-dot {
         0%,80%,100% { opacity:.2; transform:scale(.8); }
@@ -852,8 +884,9 @@ def render_generating_placeholders(ugc_id: str, slot_names=None):
     }
     .dot {
         display:inline-block; width:6px; height:6px;
-        background:#2563eb; border-radius:50%; margin:0 2px;
+        background:var(--p,#7c3aed); border-radius:50%; margin:0 2px;
         animation: pulse-dot 1.4s infinite ease-in-out;
+        box-shadow: 0 0 6px rgba(124,58,237,0.6);
     }
     .dot:nth-child(2) { animation-delay:.2s; }
     .dot:nth-child(3) { animation-delay:.4s; }
@@ -862,15 +895,15 @@ def render_generating_placeholders(ugc_id: str, slot_names=None):
     st.markdown(f"""
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
         <div><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-        <span style="font-size:13px;color:#7d8590">Generating your ads… refreshing every 5s</span>
-        <span style="font-size:10px;color:#484f58;font-family:monospace;margin-left:auto">{ugc_id}</span>
+        <span style="font-size:13px;color:#8080a8;font-weight:500">Generating your ads… refreshing every 5s</span>
+        <span style="font-size:10px;color:#404060;font-family:'JetBrains Mono',monospace;margin-left:auto">{ugc_id}</span>
     </div>
     """, unsafe_allow_html=True)
     for i, name in enumerate(slot_names):
         st.markdown(f"""
         <div style="margin-bottom:12px">
-            <div style="font-size:10px;color:#484f58;font-weight:600;
-                        text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">
+            <div style="font-size:10px;color:#404060;font-weight:700;
+                        text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
                 Slot {i+1} — {name}
             </div>
             <div class="shimmer-box" style="height:220px;width:100%"></div>
@@ -916,10 +949,14 @@ def inject_generation_guard(active: bool):
 
 def page_header(title: str, subtitle: str = ""):
     st.markdown(
-        f'<div style="margin-bottom:20px">'
-        f'<h1 style="font-size:20px;font-weight:600;color:#e6edf3;margin:0 0 4px">{title}</h1>'
-        + (f'<p style="font-size:12px;color:#484f58;margin:0">{subtitle}</p>' if subtitle else "")
-        + '</div><hr style="border:none;border-top:1px solid #21262d;margin:0 0 20px">',
+        f'<div style="margin-bottom:32px;padding-bottom:22px;border-bottom:1px solid rgba(255,255,255,0.07);'
+        f'position:relative">'
+        f'<h1 style="font-family:Bricolage Grotesque,sans-serif;font-size:26px;font-weight:800;'
+        f'color:#e8e8f8;margin:0 0 6px;letter-spacing:-0.04em">{title}</h1>'
+        + (f'<p style="font-size:13px;color:#8080a8;margin:0">{subtitle}</p>' if subtitle else "")
+        + '<div style="position:absolute;bottom:-1px;left:0;width:72px;height:2px;'
+        + 'background:linear-gradient(90deg,#7c3aed,#06b6d4);border-radius:2px"></div>'
+        + '</div>',
         unsafe_allow_html=True,
     )
 
@@ -940,8 +977,9 @@ def parse_benefits(raw: str, max_items: int = 4, max_chars: int = 28) -> list:
 
 def render_product_image(image_url: str, size: int = 72) -> str:
     placeholder = (
-        f'<div style="width:{size}px;height:{size}px;background:#1a1a1a;'
-        f'border-radius:8px;display:flex;align-items:center;justify-content:center;'
+        f'<div style="width:{size}px;height:{size}px;background:rgba(255,255,255,0.04);'
+        f'border:1px solid rgba(255,255,255,0.08);'
+        f'border-radius:10px;display:flex;align-items:center;justify-content:center;'
         f'font-size:{size//3}px;flex-shrink:0">📦</div>'
     )
     if not image_url or not image_url.strip():
@@ -1009,7 +1047,7 @@ def render_product_card(product: dict, brand_name: str) -> str:
     img_html = (
         f'<img src="{proxy}" style="width:56px;height:56px;border-radius:8px;object-fit:cover;background:#1f2937;flex-shrink:0" onerror="this.style.display=\'none\'">'
         if proxy else
-        '<div style="width:56px;height:56px;border-radius:8px;background:#1f2937;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📦</div>'
+        '<div style="width:56px;height:56px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📦</div>'
     )
     benefits = parse_benefits(product.get("key_benefits", ""), max_items=3, max_chars=25)
     pills = "".join([
@@ -1023,14 +1061,18 @@ def render_product_card(product: dict, brand_name: str) -> str:
     desc_short = desc[:80] + "…" if len(desc) > 80 else desc
     return (
         f'<div style="display:flex;align-items:flex-start;gap:14px;padding:14px 16px;'
-        f'background:#161b22;border:1px solid #21262d;border-radius:10px;margin:4px 0">'
+        f'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);'
+        f'border-radius:14px;margin:4px 0">'
         f'{img_html}'
         f'<div style="flex:1;min-width:0">'
         f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'
-        f'<span style="font-size:14px;font-weight:600;color:#e6edf3">{product["name"]}</span>'
-        f'<span style="font-size:10px;color:#484f58;background:#1f2937;padding:1px 7px;border-radius:20px;border:1px solid #21262d">{brand_name}</span>'
+        f'<span style="font-size:14px;font-weight:600;color:#e8e8f8;font-family:Bricolage Grotesque,sans-serif;'
+        f'letter-spacing:-0.02em">{product["name"]}</span>'
+        f'<span style="font-size:10px;color:#8080a8;background:rgba(255,255,255,0.05);padding:2px 8px;'
+        f'border-radius:20px;border:1px solid rgba(255,255,255,0.08)">{brand_name}</span>'
         f'{offer_html}</div>'
-        f'<div style="font-size:11px;color:#484f58;margin-bottom:6px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{desc_short}</div>'
+        f'<div style="font-size:11px;color:#404060;margin-bottom:6px;line-height:1.4;white-space:nowrap;'
+        f'overflow:hidden;text-overflow:ellipsis">{desc_short}</div>'
         f'<div>{pills}</div>'
         f'</div></div>'
     )
@@ -1042,28 +1084,33 @@ def render_brand_card(brand: dict) -> str:
     img_html = (
         f'<img src="{proxy}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;background:#1f2937;flex-shrink:0" onerror="this.style.display=\'none\'">'
         if proxy else
-        '<div style="width:48px;height:48px;border-radius:8px;background:#1f2937;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🏷️</div>'
+        '<div style="width:48px;height:48px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🏷️</div>'
     )
     tone = brand.get("tone_of_voice", "") or brand.get("tone", "")
     tagline = brand.get("tagline", "") or ""
     tone_html = (
-        f'<span style="font-size:10px;color:#7d8590;background:#1f2937;padding:1px 8px;border-radius:20px;border:1px solid #21262d;margin-top:4px;display:inline-block">{tone}</span>'
+        f'<span style="font-size:10px;color:#8080a8;background:rgba(124,58,237,0.1);padding:2px 9px;'
+        f'border-radius:20px;border:1px solid rgba(124,58,237,0.2);margin-top:5px;display:inline-block;'
+        f'font-weight:500">{tone}</span>'
         if tone else ""
     )
     return (
-        f'<div style="display:flex;align-items:center;gap:14px;padding:12px 16px;'
-        f'background:#161b22;border:1px solid #21262d;border-radius:10px;margin:4px 0">'
+        f'<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;'
+        f'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);'
+        f'border-radius:14px;margin:4px 0">'
         f'{img_html}'
         f'<div style="flex:1;min-width:0">'
-        f'<div style="font-size:14px;font-weight:600;color:#e6edf3;margin-bottom:2px">{brand["name"]}</div>'
-        f'<div style="font-size:11px;color:#484f58;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{tagline[:60]}</div>'
+        f'<div style="font-size:14px;font-weight:700;color:#e8e8f8;margin-bottom:3px;'
+        f'font-family:Bricolage Grotesque,sans-serif;letter-spacing:-0.02em">{brand["name"]}</div>'
+        f'<div style="font-size:11px;color:#8080a8;white-space:nowrap;overflow:hidden;'
+        f'text-overflow:ellipsis">{tagline[:60]}</div>'
         f'{tone_html}</div></div>'
     )
 
 # ─── Image grid renderer ──────────────────────────────────────────────────────
 IMAGE_GRID_CSS = """<style>
 [data-testid="stImage"] img { border-radius: 8px; object-fit: cover; }
-[data-testid="stImage"] { border: 1px solid #21262d; border-radius: 8px; padding: 6px; background: #161b22; margin-bottom: 4px; }
+[data-testid="stImage"] { border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 6px; background: rgba(255,255,255,0.02); margin-bottom: 4px; }
 </style>"""
 
 def render_image_grid(images: list[dict], brand_id: int, key_prefix: str):
@@ -1079,7 +1126,7 @@ def render_image_grid(images: list[dict], brand_id: int, key_prefix: str):
                 render_ad_image(url, f"saved_{i}")
             else:
                 st.markdown('<div class="img-placeholder">No image</div>', unsafe_allow_html=True)
-            st.markdown(f'<div style="margin:6px 0 10px;padding:6px 8px;background:#161b22;border:1px solid #30363d;border-radius:6px;font-family:\'JetBrains Mono\',monospace;font-size:10px;color:#8b949e;word-break:break-all;line-height:1.4">{filename}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="margin:6px 0 10px;padding:6px 8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:6px;font-family:\'JetBrains Mono\',monospace;font-size:10px;color:#8080a8;word-break:break-all;line-height:1.4">{filename}</div>', unsafe_allow_html=True)
             b1, b2 = st.columns(2)
             with b1:
                 if st.button("💾 Save", key=f"{key_prefix}_save_{i}"):
@@ -1175,7 +1222,8 @@ def render_output_panel(key_prefix: str = "dd"):
         brand_id = st.session_state.get("last_results_brand_id")
         product  = st.session_state.get("last_results_product", "")
         st.markdown(
-            f'<p style="font-size:12px;color:#3fb950;font-weight:600;margin-bottom:10px">'
+            f'<p style="font-size:12px;color:#22c55e;font-weight:700;margin-bottom:10px;'
+            f'letter-spacing:-0.01em">'
             f'✅ {len(images)} variant{"s" if len(images) != 1 else ""} · {product}</p>',
             unsafe_allow_html=True,
         )
@@ -1188,7 +1236,7 @@ def render_output_panel(key_prefix: str = "dd"):
                     render_ad_image(url, f"{key_prefix}_{i}")
                 st.markdown(
                     f'<p style="font-family:\'JetBrains Mono\',monospace;font-size:9px;'
-                    f'color:#484f58;margin:2px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{filename}</p>',
+                    f'color:#404060;margin:2px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{filename}</p>',
                     unsafe_allow_html=True,
                 )
                 b1, b2 = st.columns(2)
@@ -1303,7 +1351,7 @@ def render_score_badge(result: dict):
     """, unsafe_allow_html=True)
     for tip in tips[:2]:
         st.markdown(
-            f'<div style="font-size:10px;color:#7d8590;margin:2px 0 0 4px">{tip}</div>',
+            f'<div style="font-size:10px;color:#8080a8;margin:2px 0 0 4px">{tip}</div>',
             unsafe_allow_html=True,
         )
 
@@ -1351,7 +1399,7 @@ def render_manual_prompt_tab(brands):
         st.markdown('<hr class="kie-divider">', unsafe_allow_html=True)
         st.markdown('<span class="sec-label">Prompts</span>', unsafe_allow_html=True)
         st.markdown(
-            '<div style="font-size:11px;color:#7d8590;margin-bottom:12px">'
+            '<div style="font-size:11px;color:#8080a8;margin-bottom:12px;line-height:1.5">'
             'Write one prompt per variant. Describe scene, lighting, headline, CTA, and visual style.'
             '</div>',
             unsafe_allow_html=True,
@@ -1361,9 +1409,9 @@ def render_manual_prompt_tab(brands):
         all_scores = []
         for i in range(num_variants):
             st.markdown(
-                f'<div style="font-size:11px;font-weight:600;color:#7d8590;'
-                f'text-transform:uppercase;letter-spacing:0.8px;'
-                f'margin:{"16px" if i > 0 else "0"} 0 4px">Variant {i+1}</div>',
+                f'<div style="font-size:10px;font-weight:700;color:#404060;'
+                f'text-transform:uppercase;letter-spacing:1.2px;'
+                f'margin:{"18px" if i > 0 else "0"} 0 5px">Variant {i+1}</div>',
                 unsafe_allow_html=True,
             )
             prompt_val = st.text_area(
@@ -1384,7 +1432,7 @@ def render_manual_prompt_tab(brands):
         st.markdown("<div style='margin-top:20px'></div>", unsafe_allow_html=True)
         if len(filled) < num_variants:
             st.markdown(
-                f'<div style="font-size:11px;color:#7d8590;margin-bottom:8px">'
+                f'<div style="font-size:11px;color:#8080a8;margin-bottom:8px;font-weight:500">'
                 f'{len(filled)}/{num_variants} prompts filled</div>',
                 unsafe_allow_html=True,
             )
@@ -1437,12 +1485,19 @@ def render_manual_prompt_tab(brands):
 with st.sidebar:
     # Logo header
     st.markdown("""
-    <div style="display:flex;align-items:center;gap:10px;
-                padding:16px 10px 14px;border-bottom:1px solid #1c2030;margin-bottom:8px">
-        <div style="width:32px;height:32px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);
-                    border-radius:8px;display:flex;align-items:center;justify-content:center;
-                    font-size:15px;flex-shrink:0">🎯</div>
-        <span style="font-size:15px;font-weight:700;color:#f0f6fc;letter-spacing:-0.3px">Ad Studio</span>
+    <div style="padding:18px 12px 16px;border-bottom:1px solid rgba(255,255,255,0.07);margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:34px;height:34px;
+                        background:linear-gradient(135deg,#7c3aed,#06b6d4);
+                        border-radius:10px;display:flex;align-items:center;justify-content:center;
+                        font-size:16px;flex-shrink:0;box-shadow:0 4px 12px rgba(124,58,237,0.4)">🎯</div>
+            <div>
+                <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:15px;
+                            font-weight:800;color:#e8e8f8;letter-spacing:-0.04em;line-height:1.1">Ad Studio</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.3);font-weight:500;letter-spacing:0.5px;
+                            text-transform:uppercase;margin-top:1px">Generation Platform</div>
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1463,18 +1518,20 @@ with st.sidebar:
         n_products = 0
 
     brand_list_html = "".join(
-        f'<div style="display:flex;align-items:center;gap:7px;padding:4px 10px;border-radius:6px">'
-        f'<div style="width:6px;height:6px;border-radius:50%;background:#2563eb;flex-shrink:0"></div>'
-        f'<span style="font-size:12px;color:#636e7b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{b["name"]}</span>'
+        f'<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:8px">'
+        f'<div style="width:5px;height:5px;border-radius:50%;'
+        f'background:linear-gradient(135deg,#7c3aed,#06b6d4);flex-shrink:0"></div>'
+        f'<span style="font-size:12px;color:#8080a8;overflow:hidden;text-overflow:ellipsis;'
+        f'white-space:nowrap;font-weight:500">{b["name"]}</span>'
         f'</div>'
         for b in brands[:6]
     )
     st.markdown(f"""
-    <div style="margin-top:16px;padding:0 0 8px">
-        <div style="font-size:9px;font-weight:700;color:#3d444d;text-transform:uppercase;
-                    letter-spacing:1px;padding:0 10px;margin-bottom:6px">Workspaces</div>
+    <div style="margin-top:14px;padding:0 0 8px">
+        <div style="font-size:9px;font-weight:700;color:#404060;text-transform:uppercase;
+                    letter-spacing:1.2px;padding:0 10px;margin-bottom:6px">Workspaces</div>
         {brand_list_html}
-        <div style="font-size:11px;color:#3d444d;padding:6px 10px;margin-top:4px">
+        <div style="font-size:11px;color:#404060;padding:6px 10px;margin-top:2px;font-weight:500">
             {n_products} product{'s' if n_products != 1 else ''}
         </div>
     </div>
@@ -2030,7 +2087,7 @@ elif page == "Saved Ads Library":
                 filename  = ad["headline"] or f"ad_{ad['id']}"
                 if image_url:
                     render_ad_image(image_url, f"analytics_{i}")
-                    st.markdown(f'<div style="margin:6px 0 10px;padding:6px 8px;background:#161b22;border:1px solid #30363d;border-radius:6px;font-family:\'JetBrains Mono\',monospace;font-size:10px;color:#8b949e;word-break:break-all;line-height:1.4">{filename}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div style="margin:6px 0 10px;padding:6px 8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:6px;font-family:\'JetBrains Mono\',monospace;font-size:10px;color:#8080a8;word-break:break-all;line-height:1.4">{filename}</div>', unsafe_allow_html=True)
                 else:
                     st.markdown(
                         f'<div class="img-placeholder">📸 Creative<br>'
@@ -2121,7 +2178,7 @@ elif page == "📋 History":
                             with cols[i % 3]:
                                 if url:
                                     render_ad_image(url, f"hist_{entry['id']}_{i}")
-                                    st.markdown(f'<div style="margin:6px 0 10px;padding:6px 8px;background:#161b22;border:1px solid #30363d;border-radius:6px;font-family:\'JetBrains Mono\',monospace;font-size:10px;color:#8b949e;word-break:break-all;line-height:1.4">{filename}</div>', unsafe_allow_html=True)
+                                    st.markdown(f'<div style="margin:6px 0 10px;padding:6px 8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:6px;font-family:\'JetBrains Mono\',monospace;font-size:10px;color:#8080a8;word-break:break-all;line-height:1.4">{filename}</div>', unsafe_allow_html=True)
                                     get_download_button(url, filename, key_suffix=f"hist_{entry['id']}_{i}")
                 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
