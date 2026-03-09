@@ -402,6 +402,7 @@ TONE_OPTIONS = [
 ]
 WEBHOOK_URL              = "https://lorenzotalia.app.n8n.cloud/webhook/d0037d38-4ab7-474f-826c-1a2d96248b98"
 COMPETITOR_WEBHOOK_URL   = "https://lorenzotalia.app.n8n.cloud/webhook/competitor-reverse-v1"
+MANUAL_WEBHOOK_URL       = "https://lorenzotalia.app.n8n.cloud/webhook/manual-prompt-v1"
 RESULTS_POLL_URL         = "https://lorenzotalia.app.n8n.cloud/webhook/results-dd"
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1279,16 +1280,14 @@ def render_manual_prompt_tab(brands):
             st.session_state.job_submitted = True
             ugc_id = f"manual_{m_product['id']}_{int(time.time())}"
             st.session_state._deferred_manual = {
-                "url": st.session_state.get("webhook_url", WEBHOOK_URL),
+                "url": st.session_state.get("manual_webhook_url", MANUAL_WEBHOOK_URL),
                 "payload": {
                     "ugc_id":         ugc_id,
                     "name":           m_product["name"],
-                    "persona":        m_product.get("target_audience") or "",
-                    "context":        m_product.get("key_benefits") or "",
-                    "variants_qty":   num_variants,
                     "asset_url":      m_product.get("image_url") or "",
                     "logo_url":       m_brand.get("logo_url") or "",
                     "brand_id":       str(m_brand["id"]),
+                    "variants_qty":   num_variants,
                     "manual_prompts": prompts,
                     "mode":           "manual",
                 },
@@ -2190,6 +2189,15 @@ elif page == "Settings":
         if st.button("Save Data-Driven URL"):
             st.session_state["webhook_url"] = webhook
             st.success("Data-Driven webhook URL updated.")
+
+        manual_webhook = st.text_input(
+            "Manual Prompt Webhook URL",
+            value=st.session_state.get("manual_webhook_url", MANUAL_WEBHOOK_URL),
+            placeholder="https://….app.n8n.cloud/webhook/manual-prompt-v1",
+        )
+        if st.button("Save Manual Prompt URL"):
+            st.session_state["manual_webhook_url"] = manual_webhook
+            st.success("Manual Prompt webhook URL updated.")
 
         comp_webhook = st.text_input(
             "Competitor Reverse Webhook URL",
