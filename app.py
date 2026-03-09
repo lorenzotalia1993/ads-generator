@@ -33,7 +33,6 @@ html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif !im
 [data-testid="stSidebar"] {
     background: #090c12 !important;
     border-right: 1px solid #1c2030 !important;
-    width: 220px !important;
 }
 
 .main .block-container { padding: 2rem 2.5rem !important; max-width: 1200px !important; }
@@ -46,17 +45,35 @@ html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif !im
 .page-header h1 a, h1 a, h2 a, h3 a,
 [data-testid="stMarkdownContainer"] h1 a { display: none !important; }
 
-/* Force sidebar always expanded — hide collapse button entirely */
-[data-testid="stSidebar"] {
-    min-width: 220px !important;
-    max-width: 220px !important;
-    transform: none !important;
-    visibility: visible !important;
-}
+/* Hide native collapse button — we use a custom one */
 [data-testid="stSidebarCollapseButton"],
 button[kind="header"],
 [data-testid="collapsedControl"] {
     display: none !important;
+}
+/* Custom sidebar toggle button */
+#sidebar-toggle-btn {
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    z-index: 999999;
+    width: 34px;
+    height: 34px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8b949e;
+    font-size: 16px;
+    transition: background 0.15s, color 0.15s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+#sidebar-toggle-btn:hover {
+    background: #21262d;
+    color: #f0f6fc;
 }
 
 /* ── Typography ── */
@@ -295,12 +312,6 @@ h3 { font-size: 13px !important; font-weight: 500 !important; color: #7d8590 !im
         padding: 0.875rem !important;
     }
 
-    /* Sidebar auto-collapsible via Streamlit — keep compact */
-    [data-testid="stSidebar"] {
-        width: 240px !important;
-        min-width: 240px !important;
-    }
-
     /* Page header */
     .page-header h1 { font-size: 18px !important; }
     .page-header p  { font-size: 12px !important; }
@@ -376,6 +387,100 @@ h3 { font-size: 13px !important; font-weight: 500 !important; color: #7d8590 !im
 }
 </style>
 """, unsafe_allow_html=True)
+
+# ─── Sidebar toggle button ─────────────────────────────────────────────────────
+st_components.html("""
+<script>
+(function() {
+  var doc = window.parent.document;
+
+  function getSidebarBtn() {
+    // The native Streamlit collapse button — hidden via CSS but still functional
+    return doc.querySelector('[data-testid="stSidebarCollapseButton"] button') ||
+           doc.querySelector('button[kind="header"]');
+  }
+
+  function isSidebarCollapsed() {
+    var sidebar = doc.querySelector('[data-testid="stSidebar"]');
+    if (!sidebar) return false;
+    return sidebar.getAttribute('aria-expanded') === 'false';
+  }
+
+  function updateBtn(outer) {
+    var collapsed = isSidebarCollapsed();
+    outer.style.left = collapsed ? '14px' : '230px';
+  }
+
+  function ensureBtn() {
+    if (doc.getElementById('sb-custom-toggle')) return;
+
+    var outer = doc.createElement('div');
+    outer.id = 'sb-custom-toggle';
+    outer.innerHTML = '&#9776;';
+    outer.title = 'Toggle sidebar';
+    outer.style.cssText = [
+      'position:fixed',
+      'top:14px',
+      'left:230px',
+      'z-index:999999',
+      'width:34px',
+      'height:34px',
+      'background:#161b22',
+      'border:1px solid #30363d',
+      'border-radius:8px',
+      'cursor:pointer',
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      'color:#8b949e',
+      'font-size:18px',
+      'box-shadow:0 2px 8px rgba(0,0,0,0.4)',
+      'transition:background 0.15s,color 0.15s,left 0.25s',
+      'user-select:none'
+    ].join(';');
+
+    outer.addEventListener('mouseover', function() {
+      outer.style.background = '#21262d';
+      outer.style.color = '#f0f6fc';
+    });
+    outer.addEventListener('mouseout', function() {
+      outer.style.background = '#161b22';
+      outer.style.color = '#8b949e';
+    });
+    outer.addEventListener('click', function() {
+      // Click the real (hidden) Streamlit collapse button — this properly toggles sidebar state
+      var nativeBtn = getSidebarBtn();
+      if (nativeBtn) {
+        nativeBtn.click();
+        // Update position after Streamlit processes the toggle (slight delay)
+        setTimeout(function() { updateBtn(outer); }, 150);
+        setTimeout(function() { updateBtn(outer); }, 400);
+      }
+    });
+
+    doc.body.appendChild(outer);
+
+    // Watch for sidebar state changes (e.g. on page load / rerun)
+    var observer = new MutationObserver(function() { updateBtn(outer); });
+    var sidebar = doc.querySelector('[data-testid="stSidebar"]');
+    if (sidebar) observer.observe(sidebar, { attributes: true, attributeFilter: ['aria-expanded'] });
+  }
+
+  // Wait for DOM to be ready then inject button
+  function tryInit() {
+    var sidebar = doc.querySelector('[data-testid="stSidebar"]');
+    if (sidebar) { ensureBtn(); }
+    else { setTimeout(tryInit, 200); }
+  }
+
+  if (doc.readyState === 'loading') {
+    doc.addEventListener('DOMContentLoaded', tryInit);
+  } else {
+    tryInit();
+  }
+})();
+</script>
+""", height=0)
 
 # ─── Database ─────────────────────────────────────────────────────────────────
 
