@@ -994,7 +994,7 @@ def render_output_panel(key_prefix: str = "dd"):
         st.progress(progress)
         st.caption("This usually takes 3–5 minutes. You can navigate away — results will appear in History.")
         # Fire deferred POST now — loading bar is already visible above (progressive rendering)
-        for _key in ("_deferred_dd", "_deferred_manual"):
+        for _key in ("deferred_dd", "deferred_manual"):
             if _key in st.session_state:
                 _d = st.session_state.pop(_key)
                 try:
@@ -1279,7 +1279,7 @@ def render_manual_prompt_tab(brands):
         if generate_clicked and ready and not st.session_state.job_submitted:
             st.session_state.job_submitted = True
             ugc_id = f"manual_{m_product['id']}_{int(time.time())}"
-            st.session_state._deferred_manual = {
+            st.session_state.deferred_manual = {
                 "url": st.session_state.get("manual_webhook_url", MANUAL_WEBHOOK_URL),
                 "payload": {
                     "ugc_id":         ugc_id,
@@ -1470,7 +1470,7 @@ if page == "Generate Ads":
             audience = dd_audience_override or dd_product["target_audience"] or ""
             offer    = dd_offer_override    or dd_product.get("offer_promotion") or ""
             ugc_id   = f"ugc_{int(time.time())}"
-            st.session_state._deferred_dd = {
+            st.session_state.deferred_dd = {
                 "url": st.session_state.get("webhook_url", WEBHOOK_URL),
                 "payload": {
                     "ugc_id":       ugc_id,
@@ -1533,8 +1533,8 @@ if page == "Generate Ads":
                 st.progress(progress)
                 st.caption("This usually takes 3–5 minutes. You can navigate away — results will appear in History.")
                 # Fire deferred POST now — loading bar already visible (progressive rendering)
-                if "_deferred_comp" in st.session_state:
-                    _d = st.session_state.pop("_deferred_comp")
+                if "deferred_comp" in st.session_state:
+                    _d = st.session_state.pop("deferred_comp")
                     try:
                         _r = requests.post(_d["url"], json=_d["payload"], timeout=15)
                         _new = _r.json().get("ugc_id")
@@ -1734,7 +1734,7 @@ if page == "Generate Ads":
         if comp_btn and not st.session_state.comp_job_submitted:
             st.session_state.comp_job_submitted = True
             ugc_id = f"ugc_{int(time.time())}"
-            st.session_state._deferred_comp = {
+            st.session_state.deferred_comp = {
                 "url": st.session_state.get("competitor_webhook_url", COMPETITOR_WEBHOOK_URL),
                 "payload": {
                     "ugc_id":               ugc_id,
