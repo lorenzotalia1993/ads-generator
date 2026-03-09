@@ -988,8 +988,11 @@ def render_image_grid(images: list[dict], brand_id: int, key_prefix: str):
 def render_output_panel(key_prefix: str = "dd"):
     st.markdown('<span class="sec-label">Output</span>', unsafe_allow_html=True)
 
-    if st.session_state.job_submitted and st.session_state.pending_ugc_id:
-        ugc_id     = st.session_state.pending_ugc_id
+    ugc_id = st.session_state.pending_ugc_id or ""
+    is_manual_job = ugc_id.startswith("manual_")
+    panel_matches = (key_prefix == "manual") == is_manual_job
+
+    if st.session_state.job_submitted and ugc_id and panel_matches:
         progress   = min(0.9, st.session_state.poll_count * 0.06)
         st.markdown("**⏳ Generating your ads...**")
         st.progress(progress)
@@ -1033,6 +1036,7 @@ def render_output_panel(key_prefix: str = "dd"):
             st.session_state["last_results"]          = images
             st.session_state["last_results_brand_id"] = meta.get("brand_id")
             st.session_state["last_results_product"]  = meta.get("product_name", "")
+            st.session_state["last_results_mode"]     = key_prefix
             st.session_state.pending_ugc_id           = None
             st.session_state.pending_dd_meta          = {}
             st.session_state.generating               = False
@@ -1061,7 +1065,7 @@ def render_output_panel(key_prefix: str = "dd"):
             time.sleep(5)
             st.rerun()
 
-    elif st.session_state.get("last_results"):
+    elif st.session_state.get("last_results") and (st.session_state.get("last_results_mode", "dd") == key_prefix):
         images   = st.session_state["last_results"]
         brand_id = st.session_state.get("last_results_brand_id")
         product  = st.session_state.get("last_results_product", "")
