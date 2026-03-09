@@ -1126,16 +1126,6 @@ def render_image_grid(images: list[dict], brand_id: int, key_prefix: str):
                 render_ad_image(url, f"saved_{i}")
             else:
                 st.markdown('<div class="img-placeholder">No image</div>', unsafe_allow_html=True)
-            st.markdown(
-                f'<div style="display:flex;align-items:center;gap:6px;margin:8px 0 4px">'
-                f'<span style="display:inline-block;background:rgba(124,58,237,0.15);color:#a78bfa;'
-                f'font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;'
-                f'border:1px solid rgba(124,58,237,0.25);letter-spacing:0.5px;white-space:nowrap">META</span>'
-                f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;color:#404060;'
-                f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{filename}</span>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
             b1, b2 = st.columns(2)
             with b1:
                 if st.button("💾 Save", key=f"{key_prefix}_save_{i}"):
@@ -1144,6 +1134,16 @@ def render_image_grid(images: list[dict], brand_id: int, key_prefix: str):
             with b2:
                 if url:
                     get_download_button(url, filename, key_suffix=f"{key_prefix}_{i}")
+            st.markdown(
+                f'<div style="display:flex;align-items:center;gap:6px;margin:4px 0 12px">'
+                f'<span style="display:inline-block;background:rgba(124,58,237,0.15);color:#a78bfa;'
+                f'font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;'
+                f'border:1px solid rgba(124,58,237,0.25);letter-spacing:0.5px;white-space:nowrap">META</span>'
+                f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;color:#404060;'
+                f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{filename}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
 # ─── Shared output panel (DD + Manual tabs) ───────────────────────────────────
 def render_output_panel(key_prefix: str = "dd"):
@@ -1243,16 +1243,6 @@ def render_output_panel(key_prefix: str = "dd"):
             with grid_cols[i % 2]:
                 if url:
                     render_ad_image(url, f"{key_prefix}_{i}")
-                st.markdown(
-                    f'<div style="display:flex;align-items:center;gap:6px;margin:8px 0 4px">'
-                    f'<span style="display:inline-block;background:rgba(124,58,237,0.15);color:#a78bfa;'
-                    f'font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;'
-                    f'border:1px solid rgba(124,58,237,0.25);letter-spacing:0.5px;white-space:nowrap">META</span>'
-                    f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;color:#404060;'
-                    f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{filename}</span>'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
                 b1, b2 = st.columns(2)
                 with b1:
                     if st.button("💾", key=f"{key_prefix}_save_{i}", use_container_width=True, help="Save"):
@@ -1261,6 +1251,16 @@ def render_output_panel(key_prefix: str = "dd"):
                 with b2:
                     if url:
                         get_download_button(url, filename, label="⬇️", key_suffix=f"{key_prefix}_{i}")
+                st.markdown(
+                    f'<div style="display:flex;align-items:center;gap:6px;margin:4px 0 12px">'
+                    f'<span style="display:inline-block;background:rgba(124,58,237,0.15);color:#a78bfa;'
+                    f'font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;'
+                    f'border:1px solid rgba(124,58,237,0.25);letter-spacing:0.5px;white-space:nowrap">META</span>'
+                    f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;color:#404060;'
+                    f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{filename}</span>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
     else:
         st.markdown(
             '<div class="kie-img-placeholder">🎨 Generated ads will appear here</div>',
@@ -2171,18 +2171,6 @@ elif page == "Saved Ads Library":
                         f'<span style="font-size:11px;opacity:.6">Saved {created}</span></div>',
                         unsafe_allow_html=True,
                     )
-                # META tag + filename — outside image
-                st.markdown(
-                    f'<div style="display:flex;align-items:center;gap:6px;margin:8px 0 4px">'
-                    f'<span style="display:inline-block;background:rgba(124,58,237,0.15);color:#a78bfa;'
-                    f'font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;'
-                    f'border:1px solid rgba(124,58,237,0.25);letter-spacing:0.5px;white-space:nowrap">'
-                    f'{ad["platform"]}</span>'
-                    f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;color:#404060;'
-                    f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{filename}</span>'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
                 # Stats row
                 _body_html = f"<div class='ad-body'>{ad['body']}</div>" if ad.get("body") else ""
                 st.markdown(
@@ -2197,6 +2185,18 @@ elif page == "Saved Ads Library":
                 )
                 if image_url:
                     get_download_button(image_url, filename, key_suffix=f"lib_{i}")
+                # META tag + filename — below download button
+                st.markdown(
+                    f'<div style="display:flex;align-items:center;gap:6px;margin:4px 0 12px">'
+                    f'<span style="display:inline-block;background:rgba(124,58,237,0.15);color:#a78bfa;'
+                    f'font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;'
+                    f'border:1px solid rgba(124,58,237,0.25);letter-spacing:0.5px;white-space:nowrap">'
+                    f'{ad["platform"]}</span>'
+                    f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;color:#404060;'
+                    f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{filename}</span>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 4 — HISTORY
