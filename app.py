@@ -2170,35 +2170,39 @@ elif page == "Saved Ads Library":
     with lib_f3:
         lib_product_filter = st.selectbox("Product", _lib_prod_names, key="lib_product")
 
+    import datetime as _dt
+
     ads = get_saved_ads(brand_id=filter_id)
+
+    # Mode filter
     if lib_mode_filter != "All Modes":
-        ads = [a for a in ads if a["mode"] == lib_mode_filter]
+        ads = [a for a in ads if (a.get("mode") or "") == lib_mode_filter]
 
-    # Product filter: match slug in headline/filename
+    # Product filter: the filename (headline) is "static_{brand_slug}_{product_slug}_..."
+    # search the product slug as a plain substring — do NOT slugify the whole filename
     if lib_product_filter != "All Products":
-        _prod_slug = _slugify(lib_product_filter)
-        ads = [a for a in ads if _prod_slug in (_slugify(a.get("headline") or ""))]
+        _prod_slug = _slugify(lib_product_filter)   # e.g. "nikerunpro"
+        ads = [a for a in ads if _prod_slug in (a.get("headline") or "")]
 
-    # Date filter
-    if ads:
-        _dates = [a["created_at"][:10] for a in ads if a.get("created_at")]
-        _min_d = min(_dates) if _dates else None
-        _max_d = max(_dates) if _dates else None
-    else:
-        _min_d = _max_d = None
+    # Date range filter — compute bounds from the already-filtered list
+    _all_dates = [a["created_at"][:10] for a in ads if a.get("created_at")]
+    _min_d = min(_all_dates) if _all_dates else None
+    _max_d = max(_all_dates) if _all_dates else None
 
     with lib_f4:
         if _min_d and _max_d:
-            import datetime as _dt
             _d0 = _dt.date.fromisoformat(_min_d)
             _d1 = _dt.date.fromisoformat(_max_d)
             lib_date_filter = st.date_input("Date range", value=(_d0, _d1), key="lib_date")
         else:
+            lib_date_filter = st.date_input("Date range", key="lib_date", disabled=True)
             lib_date_filter = None
 
     if lib_date_filter and isinstance(lib_date_filter, (list, tuple)) and len(lib_date_filter) == 2:
         _df0, _df1 = lib_date_filter
-        ads = [a for a in ads if a.get("created_at") and _df0 <= _dt.date.fromisoformat(a["created_at"][:10]) <= _df1]
+        ads = [a for a in ads
+               if a.get("created_at")
+               and _df0 <= _dt.date.fromisoformat(a["created_at"][:10]) <= _df1]
 
     if not ads:
         st.info("No saved ads match the selected filters.")
