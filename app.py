@@ -1,6 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as st_components
-import sqlite3
+from supabase import create_client
 import json
 import requests
 import base64
@@ -11,7 +11,6 @@ import urllib.parse
 import pandas as pd
 import altair as alt
 from datetime import datetime, timedelta
-from pathlib import Path
 
 # ─── Page config ─────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -379,105 +378,12 @@ h3 { font-size: 13px !important; font-weight: 500 !important; color: #7d8590 !im
 """, unsafe_allow_html=True)
 
 # ─── Database ─────────────────────────────────────────────────────────────────
-DB_PATH = Path("ads_studio.db")
 
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
-    return conn
-
-def init_db():
-    conn = get_db()
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS brands (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            name            TEXT NOT NULL,
-            logo_url        TEXT,
-            primary_color   TEXT DEFAULT '#1f6feb',
-            secondary_color TEXT DEFAULT '#388bfd',
-            tone            TEXT DEFAULT 'Professional',
-            created_at      TEXT DEFAULT (datetime('now'))
-        );
-        CREATE TABLE IF NOT EXISTS products (
-            id               TEXT PRIMARY KEY,
-            brand_id         TEXT,
-            name             TEXT NOT NULL,
-            description      TEXT,
-            image_url        TEXT,
-            key_benefits     TEXT,
-            target_audience  TEXT,
-            offer_promotion  TEXT,
-            created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS saved_ads (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            brand_id    INTEGER REFERENCES brands(id),
-            headline    TEXT,
-            body        TEXT,
-            cta         TEXT,
-            image_url   TEXT,
-            platform    TEXT DEFAULT 'Meta',
-            mode        TEXT DEFAULT 'data-driven',
-            created_at  TEXT DEFAULT (datetime('now')),
-            impressions INTEGER DEFAULT 0,
-            clicks      INTEGER DEFAULT 0,
-            conversions INTEGER DEFAULT 0,
-            spend       REAL DEFAULT 0.0
-        );
-        CREATE TABLE IF NOT EXISTS generation_history (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            ugc_id       TEXT,
-            product_id   TEXT,
-            product_name TEXT,
-            brand_name   TEXT,
-            variants_qty INTEGER,
-            created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            images_json  TEXT
-        );
-    """)
-    # Migrations for existing DBs
-    for sql in [
-        "ALTER TABLE saved_ads ADD COLUMN image_url TEXT",
-        "ALTER TABLE brands ADD COLUMN tagline TEXT DEFAULT ''",
-        "ALTER TABLE brands ADD COLUMN tone_of_voice TEXT DEFAULT ''",
-        "ALTER TABLE brands ADD COLUMN target_audience TEXT DEFAULT ''",
-        "ALTER TABLE brands ADD COLUMN key_benefits TEXT DEFAULT ''",
-        "ALTER TABLE generation_history ADD COLUMN product_id TEXT",
-        "ALTER TABLE generation_history ADD COLUMN mode TEXT DEFAULT 'data_driven'",
-    ]:
-        try:
-            conn.execute(sql)
-            conn.commit()
-        except Exception:
-            pass
-
-    # Seed demo brand if empty
-    cur = conn.execute("SELECT COUNT(*) AS cnt FROM brands")
-    if cur.fetchone()["cnt"] == 0:
-        conn.execute("""
-            INSERT INTO brands (name, logo_url, primary_color, secondary_color, tone)
-            VALUES ('Acme Corp', '', '#1f6feb', '#388bfd', 'Bold & Energetic')
-        """)
-        for i in range(6):
-            imp    = random.randint(10000, 200000)
-            clicks = random.randint(int(imp * 0.01), int(imp * 0.05))
-            conv   = random.randint(int(clicks * 0.02), int(clicks * 0.15))
-            dt     = (datetime.now() - timedelta(days=random.randint(0, 30))).isoformat()
-            conn.execute("""
-                INSERT INTO saved_ads
-                  (brand_id, headline, body, cta, platform, mode,
-                   created_at, impressions, clicks, conversions, spend)
-                VALUES (1, ?, ?, ?, 'Meta', 'data-driven', ?, ?, ?, ?, ?)
-            """, (
-                f"Unlock Your Potential — Variation {i+1}",
-                "Experience the product that thousands of customers trust every day.",
-                "Shop Now", dt, imp, clicks, conv,
-                round(random.uniform(50, 2000), 2),
-            ))
-    conn.commit()
-    conn.close()
-
-init_db()
+@st.cache_resource
+def get_sb():
+    url = st.secrets.get("SUPABASE_URL", "https://rregsjhewznaiapkonmp.supabase.co")
+    key = st.secrets.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyZWdzamhld3puYWlhcGtvbm1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNTgxNzQsImV4cCI6MjA4ODYzNDE3NH0.d06xTShGMljQWSfBt-BLyY6sCk4XxwtxDQJT0EEPMdQ")
+    return create_client(url, key)
 
 if "generating"          not in st.session_state: st.session_state.generating          = False
 if "pending_ugc_id"      not in st.session_state: st.session_state.pending_ugc_id      = None
@@ -507,133 +413,194 @@ def convert_gdrive_url(url: str) -> str:
     return url
 
 # ─── DB helpers — Brands ──────────────────────────────────────────────────────
+@st.cache_data(ttl=30)
 def get_brands():
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM brands ORDER BY name").fetchall()
-    conn.close()
-    return rows
+    try:
+        sb = get_sb()
+        result = sb.table("brands").select("*").order("name").execute()
+        return result.data or []
+    except Exception as e:
+        st.error(f"Error fetching brands: {e}")
+        return []
 
 def save_brand(name, logo_url, primary_color, secondary_color, tone):
-    conn = get_db()
-    conn.execute(
-        "INSERT INTO brands (name, logo_url, primary_color, secondary_color, tone) VALUES (?,?,?,?,?)",
-        (name, logo_url, primary_color, secondary_color, tone),
-    )
-    conn.commit(); conn.close()
+    try:
+        sb = get_sb()
+        sb.table("brands").insert({
+            "name": name,
+            "logo_url": logo_url,
+            "primary_color": primary_color,
+            "secondary_color": secondary_color,
+            "tone": tone,
+        }).execute()
+        get_brands.clear()
+    except Exception as e:
+        st.error(f"Error saving brand: {e}")
 
 def delete_brand(brand_id):
-    conn = get_db()
-    conn.execute("DELETE FROM brands WHERE id=?", (brand_id,))
-    conn.commit(); conn.close()
+    try:
+        sb = get_sb()
+        sb.table("brands").delete().eq("id", brand_id).execute()
+        get_brands.clear()
+    except Exception as e:
+        st.error(f"Error deleting brand: {e}")
 
 def update_brand(brand_id, name, logo_url, primary_color, secondary_color,
                  tone, tagline, tone_of_voice, target_audience, key_benefits):
-    conn = get_db()
-    conn.execute(
-        """UPDATE brands SET name=?, logo_url=?, primary_color=?, secondary_color=?,
-           tone=?, tagline=?, tone_of_voice=?, target_audience=?, key_benefits=?
-           WHERE id=?""",
-        (name, logo_url, primary_color, secondary_color, tone,
-         tagline, tone_of_voice, target_audience, key_benefits, brand_id),
-    )
-    conn.commit(); conn.close()
+    try:
+        sb = get_sb()
+        sb.table("brands").update({
+            "name": name,
+            "logo_url": logo_url,
+            "primary_color": primary_color,
+            "secondary_color": secondary_color,
+            "tone": tone,
+            "tagline": tagline,
+            "tone_of_voice": tone_of_voice,
+            "target_audience": target_audience,
+            "key_benefits": key_benefits,
+        }).eq("id", brand_id).execute()
+        get_brands.clear()
+    except Exception as e:
+        st.error(f"Error updating brand: {e}")
 
 # ─── DB helpers — Products ────────────────────────────────────────────────────
+@st.cache_data(ttl=30)
 def get_products(brand_id=None):
-    conn = get_db()
-    if brand_id:
-        rows = conn.execute(
-            "SELECT * FROM products WHERE brand_id=? ORDER BY name", (str(brand_id),)
-        ).fetchall()
-    else:
-        rows = conn.execute("SELECT * FROM products ORDER BY name").fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+    try:
+        sb = get_sb()
+        if brand_id:
+            result = sb.table("products").select("*").eq("brand_id", str(brand_id)).order("name").execute()
+        else:
+            result = sb.table("products").select("*").order("name").execute()
+        return result.data or []
+    except Exception as e:
+        st.error(f"Error fetching products: {e}")
+        return []
 
 def save_product(brand_id, name, description, image_url, key_benefits, target_audience, offer_promotion):
-    pid  = f"prod_{int(time.time())}"
-    conn = get_db()
-    conn.execute(
-        """INSERT INTO products
-           (id, brand_id, name, description, image_url, key_benefits, target_audience, offer_promotion)
-           VALUES (?,?,?,?,?,?,?,?)""",
-        (pid, str(brand_id), name, description, image_url, key_benefits, target_audience, offer_promotion),
-    )
-    conn.commit(); conn.close()
+    pid = f"prod_{int(time.time())}"
+    try:
+        sb = get_sb()
+        sb.table("products").insert({
+            "id": pid,
+            "brand_id": str(brand_id),
+            "name": name,
+            "description": description,
+            "image_url": image_url,
+            "key_benefits": key_benefits,
+            "target_audience": target_audience,
+            "offer_promotion": offer_promotion,
+        }).execute()
+        get_products.clear()
+    except Exception as e:
+        st.error(f"Error saving product: {e}")
 
 def update_product(product_id, name, description, image_url, key_benefits, target_audience, offer_promotion):
-    conn = get_db()
-    conn.execute(
-        """UPDATE products SET name=?, description=?, image_url=?,
-           key_benefits=?, target_audience=?, offer_promotion=?
-           WHERE id=?""",
-        (name, description, image_url, key_benefits, target_audience, offer_promotion, product_id),
-    )
-    conn.commit(); conn.close()
+    try:
+        sb = get_sb()
+        sb.table("products").update({
+            "name": name,
+            "description": description,
+            "image_url": image_url,
+            "key_benefits": key_benefits,
+            "target_audience": target_audience,
+            "offer_promotion": offer_promotion,
+        }).eq("id", product_id).execute()
+        get_products.clear()
+    except Exception as e:
+        st.error(f"Error updating product: {e}")
 
 def delete_product(product_id):
-    conn = get_db()
-    conn.execute("DELETE FROM products WHERE id=?", (product_id,))
-    conn.commit(); conn.close()
+    try:
+        sb = get_sb()
+        sb.table("products").delete().eq("id", product_id).execute()
+        get_products.clear()
+    except Exception as e:
+        st.error(f"Error deleting product: {e}")
 
 # ─── DB helpers — Ads / History ───────────────────────────────────────────────
 def save_ad_image(brand_id, image_url, filename="", mode="ugc-generated"):
-    conn = get_db()
-    conn.execute(
-        "INSERT INTO saved_ads (brand_id, image_url, headline, platform, mode) VALUES (?,?,?,'Meta',?)",
-        (brand_id, image_url, filename, mode),
-    )
-    conn.commit(); conn.close()
+    try:
+        sb = get_sb()
+        sb.table("saved_ads").insert({
+            "brand_id": brand_id,
+            "image_url": image_url,
+            "headline": filename,
+            "platform": "Meta",
+            "mode": mode,
+        }).execute()
+    except Exception as e:
+        st.error(f"Error saving ad image: {e}")
 
 def get_saved_ads(brand_id=None):
-    conn = get_db()
-    q = "SELECT sa.*, b.name as brand_name FROM saved_ads sa LEFT JOIN brands b ON sa.brand_id = b.id"
-    params = ()
-    if brand_id:
-        q += " WHERE sa.brand_id = ?"
-        params = (brand_id,)
-    q += " ORDER BY sa.created_at DESC"
-    rows = conn.execute(q, params).fetchall()
-    conn.close()
-    return rows
+    try:
+        sb = get_sb()
+        ads_result = sb.table("saved_ads").select("*").order("created_at", desc=True).execute()
+        ads = ads_result.data or []
+        brands_result = sb.table("brands").select("id, name").execute()
+        brand_map = {b["id"]: b["name"] for b in (brands_result.data or [])}
+        for ad in ads:
+            ad["brand_name"] = brand_map.get(ad.get("brand_id"), "")
+        if brand_id:
+            ads = [a for a in ads if str(a.get("brand_id", "")) == str(brand_id)]
+        return ads
+    except Exception as e:
+        st.error(f"Error fetching saved ads: {e}")
+        return []
 
 def save_to_history(ugc_id, product_id, product_name, brand_name, variants_qty, images, mode="data_driven"):
-    conn = get_db()
-    conn.execute(
-        """INSERT INTO generation_history
-           (ugc_id, product_id, product_name, brand_name, variants_qty, images_json, mode)
-           VALUES (?,?,?,?,?,?,?)""",
-        (ugc_id, product_id, product_name, brand_name, variants_qty, json.dumps(images), mode),
-    )
-    conn.commit(); conn.close()
+    try:
+        sb = get_sb()
+        sb.table("generation_history").insert({
+            "ugc_id": ugc_id,
+            "product_id": product_id,
+            "product_name": product_name,
+            "brand_name": brand_name,
+            "variants_qty": variants_qty,
+            "images_json": json.dumps(images),
+            "mode": mode,
+        }).execute()
+    except Exception as e:
+        st.error(f"Error saving to history: {e}")
 
 def get_history():
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM generation_history ORDER BY created_at DESC").fetchall()
-    conn.close()
-    return rows
+    try:
+        sb = get_sb()
+        result = sb.table("generation_history").select("*").order("created_at", desc=True).execute()
+        return result.data or []
+    except Exception as e:
+        st.error(f"Error fetching history: {e}")
+        return []
 
 def clear_history():
-    conn = get_db()
-    conn.execute("DELETE FROM generation_history")
-    conn.commit(); conn.close()
+    try:
+        sb = get_sb()
+        sb.table("generation_history").delete().neq("id", 0).execute()
+    except Exception as e:
+        st.error(f"Error clearing history: {e}")
 
 def analytics_dataframe():
-    conn = get_db()
-    ads = conn.execute("""
-        SELECT sa.created_at, sa.impressions, sa.clicks, sa.conversions, sa.spend, b.name as brand
-        FROM saved_ads sa LEFT JOIN brands b ON sa.brand_id = b.id
-    """).fetchall()
-    conn.close()
-    if not ads:
+    try:
+        sb = get_sb()
+        ads_result = sb.table("saved_ads").select("created_at, impressions, clicks, conversions, spend, brand_id").execute()
+        ads = ads_result.data or []
+        if not ads:
+            return pd.DataFrame()
+        brands_result = sb.table("brands").select("id, name").execute()
+        brand_map = {b["id"]: b["name"] for b in (brands_result.data or [])}
+        for ad in ads:
+            ad["brand"] = brand_map.get(ad.get("brand_id"), "")
+        df = pd.DataFrame(ads)
+        df["created_at"] = pd.to_datetime(df["created_at"], format="mixed")
+        df["date"] = df["created_at"].dt.date
+        df["ctr"]  = (df["clicks"] / df["impressions"].replace(0, 1) * 100).round(2)
+        df["cpc"]  = (df["spend"]  / df["clicks"].replace(0, 1)).round(2)
+        df["roas"] = (df["conversions"] * 50 / df["spend"].replace(0, 1)).round(2)
+        return df
+    except Exception as e:
+        st.error(f"Error building analytics dataframe: {e}")
         return pd.DataFrame()
-    df = pd.DataFrame([dict(a) for a in ads])
-    df["created_at"] = pd.to_datetime(df["created_at"], format="mixed")
-    df["date"] = df["created_at"].dt.date
-    df["ctr"]  = (df["clicks"] / df["impressions"].replace(0, 1) * 100).round(2)
-    df["cpc"]  = (df["spend"]  / df["clicks"].replace(0, 1)).round(2)
-    df["roas"] = (df["conversions"] * 50 / df["spend"].replace(0, 1)).round(2)
-    return df
 
 # ─── Webhook ──────────────────────────────────────────────────────────────────
 def _post_webhook(url: str, payload: dict) -> tuple[bool, str, dict]:
@@ -1362,9 +1329,11 @@ with st.sidebar:
     brands      = get_brands()
     brand_names = [b["name"] for b in brands]
     brand_ids   = [b["id"]   for b in brands]
-    conn        = get_db()
-    n_products  = conn.execute("SELECT COUNT(*) AS cnt FROM products").fetchone()["cnt"]
-    conn.close()
+    try:
+        _all_prods = get_products()
+        n_products = len(_all_prods)
+    except Exception:
+        n_products = 0
 
     brand_list_html = "".join(
         f'<div style="display:flex;align-items:center;gap:7px;padding:4px 10px;border-radius:6px">'
@@ -2250,13 +2219,15 @@ elif page == "Settings":
 
         st.markdown("---")
         st.markdown('<p style="font-size:13px;font-weight:600;color:#e6edf3;margin:0 0 8px">Database</p>', unsafe_allow_html=True)
-        st.markdown(f'<p style="font-size:11px;color:#484f58;margin:0 0 10px;font-family:monospace">{DB_PATH.resolve()}</p>', unsafe_allow_html=True)
-        conn = get_db()
-        n_brands   = conn.execute("SELECT COUNT(*) AS cnt FROM brands").fetchone()["cnt"]
-        n_prods    = conn.execute("SELECT COUNT(*) AS cnt FROM products").fetchone()["cnt"]
-        n_ads      = conn.execute("SELECT COUNT(*) AS cnt FROM saved_ads").fetchone()["cnt"]
-        n_history  = conn.execute("SELECT COUNT(*) AS cnt FROM generation_history").fetchone()["cnt"]
-        conn.close()
+        st.markdown('<p style="font-size:11px;color:#484f58;margin:0 0 10px;font-family:monospace">Supabase (cloud)</p>', unsafe_allow_html=True)
+        try:
+            sb = get_sb()
+            n_brands  = len((sb.table("brands").select("id").execute().data or []))
+            n_prods   = len((sb.table("products").select("id").execute().data or []))
+            n_ads     = len((sb.table("saved_ads").select("id").execute().data or []))
+            n_history = len((sb.table("generation_history").select("id").execute().data or []))
+        except Exception:
+            n_brands = n_prods = n_ads = n_history = "?"
         st.markdown(f"""
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:4px 0 12px">
             {''.join([
@@ -2270,11 +2241,13 @@ elif page == "Settings":
         """, unsafe_allow_html=True)
 
         if st.button("Clear All Saved Ads", type="secondary"):
-            conn = get_db()
-            conn.execute("DELETE FROM saved_ads")
-            conn.commit(); conn.close()
-            st.success("All saved ads deleted.")
-            st.rerun()
+            try:
+                sb = get_sb()
+                sb.table("saved_ads").delete().neq("id", 0).execute()
+                st.success("All saved ads deleted.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error clearing saved ads: {e}")
 
     st.markdown("---")
     st.markdown(
