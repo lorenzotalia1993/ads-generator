@@ -2800,55 +2800,67 @@ elif page == "image-ads":
                 # ── POLLING ──────────────────────────────────────────────
                 ugc_id     = st.session_state.pending_comp_ugc_id
                 poll_count = st.session_state.comp_poll_count
-                progress   = min(0.9, poll_count * 0.06)
 
                 st.markdown("**⏳ Generating your ads...**")
-                st.progress(progress)
-                st.caption("This usually takes 3–5 minutes. You can navigate away — results will appear in History.")
-                # Fire deferred POST now — loading bar already visible (progressive rendering)
+                st.progress(min(0.9, poll_count * 0.06))
+                st.caption("This usually takes 3–5 minutes.")
+
+                # ── Fire deferred POST (first render only) ──
                 if "deferred_comp" in st.session_state:
                     _d = st.session_state.pop("deferred_comp")
                     try:
-                        _r = requests.post(_d["url"], json=_d["payload"], timeout=15)
-                        _new = _r.json().get("ugc_id")
+                        _r  = requests.post(_d["url"], json=_d["payload"], timeout=30)
+                        _rj = _r.json()
+                        if isinstance(_rj, list): _rj = _rj[0] if _rj else {}
+                        _new = _rj.get("ugc_id") if isinstance(_rj, dict) else None
                         if _new:
                             st.session_state.pending_comp_ugc_id = _new
                             ugc_id = _new
-                    except Exception:
-                        pass
+                    except Exception as _pe:
+                        st.caption(f"webhook: {_pe}")
 
+                # ── Poll for results ──
+                poll_data   = {}
+                poll_status = ""
+                raw_images  = []
                 try:
-                    poll_resp = requests.get(RESULTS_POLL_URL, params={"ugc_id": ugc_id}, timeout=10)
-                    _raw = poll_resp.json()
-                    # n8n may return a list — unwrap to dict
-                    poll_data = _raw[0] if isinstance(_raw, list) and _raw else (_raw if isinstance(_raw, dict) else {})
-                except Exception:
-                    poll_data = {"status": "processing"}
+                    _pr  = requests.get(RESULTS_POLL_URL, params={"ugc_id": ugc_id}, timeout=15)
+                    _prj = _pr.json()
+                    if isinstance(_prj, list):
+                        poll_data = _prj[0] if _prj else {}
+                    elif isinstance(_prj, dict):
+                        poll_data = _prj
+                    poll_status = str(poll_data.get("status", "")).lower()
+                    raw_images  = poll_data.get("images") or []
+                    # normalise: image_url → url
+                    raw_images = [
+                        dict(img, url=img.get("url") or img.get("image_url", ""))
+                        for img in raw_images
+                    ]
+                    if not raw_images:
+                        for _k in ("url", "image_url"):
+                            if poll_data.get(_k):
+                                raw_images = [{"url": poll_data[_k]}]
+                                break
+                except Exception as _pe:
+                    poll_status = "error"
+                    st.caption(f"poll error: {_pe}")
 
-                # Accept both "done" and "completed" status from n8n
-                poll_status = poll_data.get("status", "")
-                raw_images  = poll_data.get("images", [])
+                # ── Debug expander ──
+                with st.expander("🔍 Debug", expanded=False):
+                    st.caption(f"ugc_id: `{ugc_id}`  |  status: `{poll_status}`  |  images: {len(raw_images)}  |  poll #{poll_count}")
+                    st.json(poll_data)
 
-                # Normalise image dicts: support both "url" and "image_url" keys
-                raw_images = [
-                    {**img, "url": img.get("url") or img.get("image_url", "")}
-                    for img in raw_images
-                ]
-                # Also handle n8n returning a single image URL at top level
-                if not raw_images and poll_data.get("url"):
-                    raw_images = [{"url": poll_data["url"]}]
-                if not raw_images and poll_data.get("image_url"):
-                    raw_images = [{"url": poll_data["image_url"]}]
-
+                # ── Done → show results ──
                 if poll_status in ("done", "completed") and raw_images:
-                    meta       = st.session_state.pending_comp_meta
-                    images     = [
-                        {**img, "filename": build_competitor_filename(
-                            brand_name     = meta.get("brand_name", ""),
-                            product_name   = meta.get("product_name", ""),
-                            competitor_url = meta.get("competitor_url", ""),
-                            variant_index  = img.get("index", i),
-                        )}
+                    meta   = st.session_state.get("pending_comp_meta", {})
+                    images = [
+                        dict(img, filename=build_competitor_filename(
+                            brand_name    = meta.get("brand_name", ""),
+                            product_name  = meta.get("product_name", ""),
+                            competitor_url= meta.get("competitor_url", ""),
+                            variant_index = img.get("index", i),
+                        ))
                         for i, img in enumerate(raw_images)
                     ]
                     save_to_history(
@@ -2860,32 +2872,39 @@ elif page == "image-ads":
                         images       = images,
                         mode         = "competitor_reverse",
                     )
-                    st.session_state["last_comp_results"]          = images
-                    st.session_state["last_comp_results_brand_id"] = meta.get("brand_id")
-                    st.session_state.pending_comp_ugc_id           = None
-                    st.session_state.pending_comp_meta             = {}
-                    st.session_state.generating                    = False
-                    st.session_state.comp_job_submitted            = False
-                    st.session_state.comp_poll_count               = 0
+                    st.session_state.last_comp_results          = images
+                    st.session_state.last_comp_results_brand_id = meta.get("brand_id")
+                    st.session_state.pending_comp_ugc_id        = None
+                    st.session_state.pending_comp_meta          = {}
+                    st.session_state.generating                 = False
+                    st.session_state.comp_job_submitted         = False
+                    st.session_state.comp_poll_count            = 0
                     inject_generation_guard(False)
                     st.rerun()
-                elif st.session_state.comp_poll_count >= 72:  # 72 × 5s = 6 min
-                    st.error("⏱️ Timeout — il workflow sta impiegando più del solito.")
-                    if st.button("🔄 Controlla ancora", key="comp_check_again"):
-                        st.session_state.comp_poll_count = 0
-                        st.rerun()
-                    if st.button("✕ Annulla", key="comp_reset_timeout"):
-                        st.session_state.generating          = False
-                        st.session_state.comp_job_submitted  = False
-                        st.session_state.comp_poll_count     = 0
-                        st.session_state.pending_comp_ugc_id = None
-                        inject_generation_guard(False)
-                        st.rerun()
+
+                # ── Timeout ──
+                elif poll_count >= 72:
+                    st.warning("⏱️ Il workflow sta impiegando più del solito.")
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        if st.button("🔄 Riprova", key="comp_check_again"):
+                            st.session_state.comp_poll_count = 0
+                            st.rerun()
+                    with col_b:
+                        if st.button("✕ Annulla", key="comp_reset_timeout"):
+                            st.session_state.generating         = False
+                            st.session_state.comp_job_submitted = False
+                            st.session_state.comp_poll_count    = 0
+                            st.session_state.pending_comp_ugc_id = None
+                            inject_generation_guard(False)
+                            st.rerun()
+
+                # ── Keep polling ──
                 else:
                     if st.button("✕ Cancel", key="comp_cancel_btn", type="secondary"):
-                        st.session_state.generating          = False
-                        st.session_state.comp_job_submitted  = False
-                        st.session_state.comp_poll_count     = 0
+                        st.session_state.generating         = False
+                        st.session_state.comp_job_submitted = False
+                        st.session_state.comp_poll_count    = 0
                         st.session_state.pending_comp_ugc_id = None
                         inject_generation_guard(False)
                         st.rerun()
@@ -2904,7 +2923,7 @@ elif page == "image-ads":
                 )
                 cr_grid_cols = st.columns(2, gap="small")
                 for i, img in enumerate(images):
-                    url      = img.get("image_url", "")
+                    url      = img.get("url") or img.get("image_url", "")
                     filename = img.get("filename", build_competitor_filename("", "", "", i))
                     with cr_grid_cols[i % 2]:
                         if url:
