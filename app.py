@@ -128,24 +128,8 @@ header[data-testid="stHeader"] {
 [data-testid="stMarkdownContainer"] h1 a { display: none !important; }
 /* Hide Streamlit header buttons we don't need, but keep collapsedControl */
 button[kind="header"] { display: none !important; }
-/* collapsedControl: the reopen arrow when sidebar is collapsed */
-[data-testid="collapsedControl"] {
-  display: flex !important; visibility: visible !important;
-  position: fixed !important; top: 12px !important; left: 12px !important;
-  z-index: 999999 !important;
-  background: var(--bg-e) !important;
-  border: 1px solid var(--bd) !important;
-  border-radius: 8px !important;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.10) !important;
-  width: 36px !important; height: 36px !important;
-  align-items: center !important; justify-content: center !important;
-}
-[data-testid="collapsedControl"] button {
-  width: 100% !important; height: 100% !important;
-  display: flex !important; align-items: center !important; justify-content: center !important;
-  color: var(--tx2) !important; background: transparent !important; border: none !important;
-}
-[data-testid="collapsedControl"] svg { color: var(--tx2) !important; fill: var(--tx2) !important; }
+/* collapsedControl hidden — reopen handled by #sb-reopen-arrow JS button */
+[data-testid="collapsedControl"] { display: none !important; }
 /* Kill every top padding/margin Streamlit adds above the content */
 .stApp [data-testid="stAppViewContainer"] { padding-top: 0 !important; margin-top: 0 !important; }
 [data-testid="stAppViewContainer"] > section.main,
@@ -814,13 +798,77 @@ body.adfl-dark [data-testid="stDataFrame"] canvas { filter: invert(1) hue-rotate
 </style>
 """, unsafe_allow_html=True)
 
-# ─── Custom favicon (AF logo SVG) ─────────────────────────────────────────────
+# ─── Sidebar reopen arrow (shows only when sidebar is collapsed) ───────────────
 st_components.html("""<script>
 (function() {
   var doc = window.parent.document;
-  // collapsedControl is intentionally NOT hidden — it's the reopen arrow when sidebar is closed
+
+  function getNativeBtn() {
+    return doc.querySelector('[data-testid="stSidebarCollapseButton"] button');
+  }
+
+  function isSidebarCollapsed() {
+    var sb = doc.querySelector('[data-testid="stSidebar"]');
+    return sb ? sb.getAttribute('aria-expanded') === 'false' : false;
+  }
+
+  function ensureReopenBtn() {
+    if (doc.getElementById('sb-reopen-arrow')) return;
+
+    var btn = doc.createElement('div');
+    btn.id = 'sb-reopen-arrow';
+    btn.title = 'Open sidebar';
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    btn.style.cssText = [
+      'position:fixed', 'top:12px', 'left:12px', 'z-index:9999999',
+      'width:36px', 'height:36px', 'border-radius:8px',
+      'cursor:pointer', 'display:none',
+      'align-items:center', 'justify-content:center',
+      'background:#FFFFFF', 'border:1px solid #E5E7EB', 'color:#6B7280',
+      'box-shadow:0 1px 4px rgba(0,0,0,0.10)',
+      'transition:background 0.15s,color 0.15s'
+    ].join(';');
+
+    btn.addEventListener('mouseover', function() {
+      btn.style.background = '#F3F4F6'; btn.style.color = '#111827';
+    });
+    btn.addEventListener('mouseout', function() {
+      btn.style.background = '#FFFFFF'; btn.style.color = '#6B7280';
+    });
+    btn.addEventListener('click', function() {
+      var nb = getNativeBtn();
+      if (nb) nb.click();
+    });
+
+    // Theme awareness
+    new MutationObserver(function() {
+      var dark = doc.body.classList.contains('adfl-dark');
+      btn.style.background = dark ? '#1E293B' : '#FFFFFF';
+      btn.style.border = dark ? '1px solid #334155' : '1px solid #E5E7EB';
+      btn.style.color = dark ? '#94A3B8' : '#6B7280';
+    }).observe(doc.body, { attributes: true, attributeFilter: ['class'] });
+
+    doc.body.appendChild(btn);
+  }
+
+  function update() {
+    ensureReopenBtn();
+    var btn = doc.getElementById('sb-reopen-arrow');
+    if (btn) btn.style.display = isSidebarCollapsed() ? 'flex' : 'none';
+  }
+
+  function init() {
+    var sb = doc.querySelector('[data-testid="stSidebar"]');
+    if (!sb) { setTimeout(init, 200); return; }
+    update();
+    new MutationObserver(update).observe(sb, { attributes: true, attributeFilter: ['aria-expanded'] });
+  }
+
+  doc.readyState === 'loading' ? doc.addEventListener('DOMContentLoaded', init) : init();
 })();
 </script>""", height=0)
+
+# ─── Custom favicon (AF logo SVG) ─────────────────────────────────────────────
 
 st_components.html("""<script>
 (function() {
