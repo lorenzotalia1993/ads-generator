@@ -1591,6 +1591,104 @@ function openLb() {{
     init_h = width if width else 320
     st_components.html(html, height=init_h, scrolling=False)
 
+def render_generation_progress(poll_count: int, variants_qty: int = 2):
+    """Animated 4-step progress panel with skeleton cards."""
+    # Determine active step (0-indexed) from poll_count
+    if poll_count < 4:
+        active_step = 0
+    elif poll_count < 10:
+        active_step = 1
+    elif poll_count < 20:
+        active_step = 2
+    else:
+        active_step = 3
+
+    steps = ["Visual analysis", "Creative strategy", "Generating images", "Finalizing"]
+
+    # Build skeleton cards HTML
+    skeleton_cards = ""
+    for i in range(variants_qty):
+        delay = i * 150
+        skeleton_cards += f"""
+        <div class="sk-card" style="animation-delay:{delay}ms">
+            <div class="sk-img shimmer"></div>
+            <div class="sk-line shimmer" style="width:70%;margin-top:10px"></div>
+            <div class="sk-line shimmer" style="width:45%;margin-top:6px"></div>
+        </div>"""
+
+    # Build step dots HTML
+    dots_html = ""
+    for i, step in enumerate(steps):
+        if i < active_step:
+            cls = "step-done"
+        elif i == active_step:
+            cls = "step-active"
+        else:
+            cls = "step-pending"
+        dots_html += f"""
+        <div class="step-item {cls}">
+            <div class="step-dot"></div>
+            <span class="step-label">{step}</span>
+        </div>"""
+        if i < len(steps) - 1:
+            line_cls = "step-line-done" if i < active_step else "step-line-pending"
+            dots_html += f'<div class="step-line {line_cls}"></div>'
+
+    progress_pct = min(90, poll_count * 5)
+
+    html = f"""
+<style>
+  .gen-panel {{font-family:'Inter',sans-serif;color:#111827;padding:4px 0 16px}}
+  .gen-title {{font-size:15px;font-weight:600;margin-bottom:16px;color:#111827}}
+
+  /* Step dots */
+  .steps-row {{display:flex;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:0}}
+  .step-item {{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}}
+  .step-dot {{width:12px;height:12px;border-radius:50%;transition:all 0.4s ease}}
+  .step-label {{font-size:10px;color:#9CA3AF;white-space:nowrap;transition:color 0.3s}}
+  .step-line {{flex:1;height:2px;min-width:16px;transition:background 0.4s ease;margin-bottom:16px}}
+  .step-line-done {{background:#6366F1}}
+  .step-line-pending {{background:#E5E7EB}}
+  .step-done .step-dot {{background:#6366F1;box-shadow:0 0 0 3px rgba(99,102,241,0.15)}}
+  .step-done .step-label {{color:#6366F1}}
+  .step-active .step-dot {{background:#6366F1;animation:pulse-dot 1.2s ease-in-out infinite}}
+  .step-active .step-label {{color:#6366F1;font-weight:600}}
+  .step-pending .step-dot {{background:#E5E7EB}}
+  @keyframes pulse-dot {{0%,100%{{box-shadow:0 0 0 0 rgba(99,102,241,0.4)}}50%{{box-shadow:0 0 0 6px rgba(99,102,241,0)}}}}
+
+  /* Progress bar */
+  .prog-bar-wrap {{background:#F3F4F6;border-radius:99px;height:6px;margin-bottom:16px;overflow:hidden}}
+  .prog-bar-fill {{height:100%;border-radius:99px;background:linear-gradient(90deg,#6366F1,#818CF8);
+    transition:width 0.8s ease;width:{progress_pct}%}}
+
+  /* Skeleton cards */
+  .sk-grid {{display:grid;grid-template-columns:1fr 1fr;gap:12px}}
+  .sk-card {{background:#FFFFFF;border:1px solid #F3F4F6;border-radius:12px;padding:10px;
+    animation:fadeSlideUp 0.4s ease both}}
+  .sk-img {{width:100%;height:160px;border-radius:8px;background:#F3F4F6}}
+  .sk-line {{height:10px;border-radius:6px;background:#F3F4F6}}
+
+  @keyframes fadeSlideUp {{from{{opacity:0;transform:translateY(12px)}}to{{opacity:1;transform:translateY(0)}}}}
+
+  @keyframes shimmer {{
+    0%{{background-position:-400px 0}}
+    100%{{background-position:400px 0}}
+  }}
+  .shimmer {{
+    background:linear-gradient(90deg,#F3F4F6 25%,#E9EAEB 50%,#F3F4F6 75%);
+    background-size:400px 100%;
+    animation:shimmer 1.4s ease-in-out infinite;
+  }}
+</style>
+<div class="gen-panel">
+  <div class="gen-title">⏳ Generating {variants_qty} variant{"s" if variants_qty != 1 else ""}…</div>
+  <div class="steps-row">{dots_html}</div>
+  <div class="prog-bar-wrap"><div class="prog-bar-fill"></div></div>
+  <div class="sk-grid">{skeleton_cards}</div>
+</div>
+"""
+    st_components.html(html, height=320 + (variants_qty // 2) * 60)
+
 def render_product_card(product: dict, brand_name: str) -> str:
     img_url = product.get("image_url", "").strip()
     encoded = urllib.parse.quote(img_url, safe="") if img_url else ""
@@ -1758,10 +1856,7 @@ def render_output_panel(key_prefix: str = "dd"):
     panel_matches = (key_prefix == "manual") == is_manual_job
 
     if st.session_state.job_submitted and ugc_id and panel_matches:
-        progress   = min(0.9, st.session_state.poll_count * 0.06)
-        st.markdown("**⏳ Generating your ads...**")
-        st.progress(progress)
-        st.caption("This usually takes 3–5 minutes. You can navigate away — results will appear in History.")
+        render_generation_progress(st.session_state.poll_count, st.session_state.get("dd_variations_qty", 2))
         # Fire deferred POST now — loading bar is already visible above (progressive rendering)
         for _key in ("deferred_dd", "deferred_manual"):
             if _key in st.session_state:
@@ -2644,9 +2739,27 @@ elif page == "image-ads":
 
     mode_tab1, mode_tab2, mode_tab3 = st.tabs(["Data-Driven", "Competitor Reverse", "✏️ Manual Prompt"])
 
+    # ── JS: persist active tab across st.rerun() ──
+    st_components.html("""
+<script>
+(function(){
+  var doc = window.parent.document;
+  var tabs = doc.querySelectorAll('[data-baseweb="tab"]');
+  if (!tabs.length) return;
+  tabs.forEach(function(t, idx){
+    t.addEventListener('click', function(){ window.parent._activeGenTab = idx; });
+  });
+  var saved = window.parent._activeGenTab;
+  if (saved && saved > 0 && saved < tabs.length) {
+    tabs[saved].click();
+  }
+})();
+</script>
+""", height=0, scrolling=False)
+
     # ── DATA-DRIVEN ───────────────────────────────────────────────────────────
     with mode_tab1:
-        left_col, right_col = st.columns([1, 1], gap="large")
+        left_col, right_col = st.columns([2, 3], gap="large")
 
         # Right col first — output / polling
         with right_col:
@@ -2743,6 +2856,7 @@ elif page == "image-ads":
         # Fire-and-poll: queue job, rerun immediately to show loading, fire POST on next render
         if generate_btn and not st.session_state.job_submitted:
             st.session_state.job_submitted = True
+            st.session_state["dd_variations_qty"] = int(dd_variations)
             audience = dd_audience_override or dd_product["target_audience"] or ""
             offer    = dd_offer_override    or dd_product.get("offer_promotion") or ""
             ugc_id   = f"ugc_{int(time.time())}"
@@ -2773,7 +2887,7 @@ elif page == "image-ads":
 
     # ── COMPETITOR REVERSE ────────────────────────────────────────────────────
     with mode_tab2:
-        cl_col, cr_col = st.columns([1, 1], gap="large")
+        cl_col, cr_col = st.columns([2, 3], gap="large")
 
         # Right col — competitor preview + output / polling
         with cr_col:
@@ -2805,9 +2919,7 @@ elif page == "image-ads":
                 ugc_id     = st.session_state.pending_comp_ugc_id
                 poll_count = st.session_state.comp_poll_count
 
-                st.markdown("**⏳ Generating your ads...**")
-                st.progress(min(0.9, poll_count * 0.06))
-                st.caption("This usually takes 3–5 minutes.")
+                render_generation_progress(poll_count, st.session_state.get("comp_variations_qty", 2))
 
                 # ── Fire deferred POST (first render only) ──
                 # n8n competitor webhook may respond synchronously with the final result.
@@ -2928,12 +3040,18 @@ elif page == "image-ads":
                 # ── RESULTS ──────────────────────────────────────────────
                 images   = st.session_state["last_comp_results"]
                 brand_id = st.session_state.get("last_comp_results_brand_id")
+                st.markdown("""
+<style>
+.result-img-wrap img { animation: imgReveal 0.5s ease both; }
+@keyframes imgReveal { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
+</style>
+""", unsafe_allow_html=True)
                 st.markdown(
                     f'<p style="font-size:12px;color:#3fb950;font-weight:600;margin-bottom:10px">'
                     f'✅ {len(images)} variant{"s" if len(images) != 1 else ""}</p>',
                     unsafe_allow_html=True,
                 )
-                cr_grid_cols = st.columns(2, gap="small")
+                cr_grid_cols = st.columns(2, gap="medium")
                 for i, img in enumerate(images):
                     url      = img.get("url") or img.get("image_url", "")
                     filename = img.get("filename", build_competitor_filename("", "", "", i))
@@ -3051,6 +3169,7 @@ elif page == "image-ads":
 
         # Fire-and-poll: queue job, rerun immediately to show loading, fire POST on next render
         if comp_btn and not st.session_state.comp_job_submitted:
+            st.session_state["comp_variations_qty"] = int(comp_variations)
             # Upload competitor image to Supabase first
             _file_bytes = st.session_state.get("comp_preview_bytes")
             _file_mime  = st.session_state.get("comp_preview_mime", "image/jpeg")
