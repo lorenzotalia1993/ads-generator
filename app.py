@@ -194,14 +194,18 @@ h3 { font-size: 12px !important; font-weight: 500 !important; color: var(--tx2) 
 [data-testid="stSidebar"] .stMarkdown,
 [data-testid="stSidebar"] .stMarkdown > div { margin: 0 !important; padding: 0 !important; }
 [data-testid="stSidebar"] .block-container { padding: 0 !important; }
-/* Make sidebar a flex column so the footer can be pushed to the bottom */
-[data-testid="stSidebarContent"],
+/* Zero lateral padding on outer wrapper divs (do NOT make them flex) */
 [data-testid="stSidebar"] > div,
 [data-testid="stSidebar"] > div > div,
 [data-testid="stSidebar"] section {
+  padding-left: 0 !important; padding-right: 0 !important;
+}
+/* Make ONLY the content wrapper a flex column so footer is pushed to bottom */
+[data-testid="stSidebarContent"] {
   display: flex !important; flex-direction: column !important;
   height: 100% !important; overflow-y: auto !important;
   padding-left: 0 !important; padding-right: 0 !important;
+  justify-content: flex-start !important; align-items: stretch !important;
 }
 .sb-flex-spacer { flex: 1 1 auto; min-height: 32px; display: block; }
 /* Ensure the spacer's Streamlit wrapper also expands */
