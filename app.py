@@ -112,34 +112,40 @@ html, body, [class*="css"] {
   background: var(--bg) !important;
 }
 
-/* Hide chrome */
+/* Hide chrome — but NOT stHeader itself (it contains collapsedControl) */
 #MainMenu, footer,
 [data-testid="stDecoration"],
 [data-testid="stToolbar"],
-[data-testid="stHeader"],
-[data-testid="stAppViewBlockContainer"] > [data-testid="stHeader"],
-header[data-testid="stHeader"] { display: none !important; }
+[data-testid="stStatusWidget"] { display: none !important; }
+/* Make the header invisible without removing it from DOM */
+header[data-testid="stHeader"] {
+  background: transparent !important;
+  height: 0 !important; min-height: 0 !important;
+  overflow: visible !important;
+  border: none !important; padding: 0 !important;
+}
 .page-header h1 a, h1 a, h2 a, h3 a,
 [data-testid="stMarkdownContainer"] h1 a { display: none !important; }
-/* Hide Streamlit header buttons we don't need */
+/* Hide Streamlit header buttons we don't need, but keep collapsedControl */
 button[kind="header"] { display: none !important; }
-/* Style the re-open arrow (collapsedControl) — visible when sidebar is closed */
+/* collapsedControl: the reopen arrow when sidebar is collapsed */
 [data-testid="collapsedControl"] {
+  display: flex !important; visibility: visible !important;
+  position: fixed !important; top: 12px !important; left: 12px !important;
+  z-index: 999999 !important;
   background: var(--bg-e) !important;
   border: 1px solid var(--bd) !important;
   border-radius: 8px !important;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.10) !important;
+  width: 36px !important; height: 36px !important;
+  align-items: center !important; justify-content: center !important;
 }
-[data-testid="collapsedControl"] button,
-[data-testid="collapsedControl"] svg {
-  color: var(--tx2) !important;
-  fill: var(--tx2) !important;
+[data-testid="collapsedControl"] button {
+  width: 100% !important; height: 100% !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  color: var(--tx2) !important; background: transparent !important; border: none !important;
 }
-
-/* ─── Remove all top dead space from Streamlit shell ── */
-.stApp > header,
-[data-testid="stDecoration"],
-[data-testid="stStatusWidget"] { display: none !important; }
+[data-testid="collapsedControl"] svg { color: var(--tx2) !important; fill: var(--tx2) !important; }
 /* Kill every top padding/margin Streamlit adds above the content */
 .stApp [data-testid="stAppViewContainer"] { padding-top: 0 !important; margin-top: 0 !important; }
 [data-testid="stAppViewContainer"] > section.main,
