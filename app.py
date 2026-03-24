@@ -2806,45 +2806,58 @@ elif page == "image-ads":
                 st.caption("This usually takes 3–5 minutes.")
 
                 # ── Fire deferred POST (first render only) ──
+                # n8n competitor webhook may respond synchronously with the final result.
+                # Use a 5-minute timeout and check if the POST response IS the result.
                 if "deferred_comp" in st.session_state:
                     _d = st.session_state.pop("deferred_comp")
                     try:
-                        _r  = requests.post(_d["url"], json=_d["payload"], timeout=30)
+                        _r  = requests.post(_d["url"], json=_d["payload"], timeout=360)
                         _rj = _r.json()
                         if isinstance(_rj, list): _rj = _rj[0] if _rj else {}
-                        _new = _rj.get("ugc_id") if isinstance(_rj, dict) else None
-                        if _new:
-                            st.session_state.pending_comp_ugc_id = _new
-                            ugc_id = _new
+                        if isinstance(_rj, dict):
+                            _new = _rj.get("ugc_id")
+                            if _new:
+                                st.session_state.pending_comp_ugc_id = _new
+                                ugc_id = _new
+                            # ← If POST response already contains final result, store it and skip polling
+                            if str(_rj.get("status","")).lower() in ("done","completed") and _rj.get("images"):
+                                st.session_state["_comp_direct_result"] = _rj
                     except Exception as _pe:
                         st.caption(f"webhook: {_pe}")
 
-                # ── Poll for results ──
+                # ── Check for direct result from POST response ──
                 poll_data   = {}
                 poll_status = ""
                 raw_images  = []
-                try:
-                    _pr  = requests.get(RESULTS_POLL_URL, params={"ugc_id": ugc_id}, timeout=15)
-                    _prj = _pr.json()
-                    if isinstance(_prj, list):
-                        poll_data = _prj[0] if _prj else {}
-                    elif isinstance(_prj, dict):
-                        poll_data = _prj
+
+                if "_comp_direct_result" in st.session_state:
+                    poll_data   = st.session_state.pop("_comp_direct_result")
                     poll_status = str(poll_data.get("status", "")).lower()
-                    raw_images  = poll_data.get("images") or []
-                    # normalise: image_url → url
-                    raw_images = [
-                        dict(img, url=img.get("url") or img.get("image_url", ""))
-                        for img in raw_images
-                    ]
-                    if not raw_images:
-                        for _k in ("url", "image_url"):
-                            if poll_data.get(_k):
-                                raw_images = [{"url": poll_data[_k]}]
-                                break
-                except Exception as _pe:
-                    poll_status = "error"
-                    st.caption(f"poll error: {_pe}")
+                else:
+                    # ── Poll results-dd endpoint ──
+                    try:
+                        _pr  = requests.get(RESULTS_POLL_URL, params={"ugc_id": ugc_id}, timeout=15)
+                        _prj = _pr.json()
+                        if isinstance(_prj, list):
+                            poll_data = _prj[0] if _prj else {}
+                        elif isinstance(_prj, dict):
+                            poll_data = _prj
+                        poll_status = str(poll_data.get("status", "")).lower()
+                    except Exception as _pe:
+                        poll_status = "error"
+                        st.caption(f"poll error: {_pe}")
+
+                # Normalise images list — support both "url" and "image_url" keys
+                raw_images = poll_data.get("images") or []
+                raw_images = [
+                    dict(img, url=img.get("url") or img.get("image_url", ""))
+                    for img in raw_images
+                ]
+                if not raw_images:
+                    for _k in ("url", "image_url"):
+                        if poll_data.get(_k):
+                            raw_images = [{"url": poll_data[_k]}]
+                            break
 
                 # ── Debug expander (open by default so we can see poll response) ──
                 with st.expander(f"🔍 Poll #{poll_count} — status: `{poll_status}` — images: {len(raw_images)}", expanded=True):
