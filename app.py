@@ -183,7 +183,7 @@ h3 { font-size: 12px !important; font-weight: 500 !important; color: var(--tx2) 
   border-right: 1px solid var(--side-border) !important;
   color: var(--side-text) !important;
 }
-[data-testid="stSidebar"] * { color: inherit; }
+[data-testid="stSidebar"] * { color: inherit; text-align: left !important; }
 
 /* Strip ALL Streamlit default spacing from sidebar — every layer */
 [data-testid="stSidebar"] .stVerticalBlock,
