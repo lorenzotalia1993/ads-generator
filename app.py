@@ -1312,6 +1312,19 @@ def build_filename(brand_name: str, product_name: str, creative_angle: str, vari
         f"_{_slugify(creative_angle)}_v{variant_index + 1}_{date_str}"
     )
 
+def upload_competitor_image_to_supabase(file_bytes: bytes, filename: str, mime_type: str) -> str:
+    """Upload competitor ad image to Supabase Storage bucket 'competitor-ads'. Returns public URL."""
+    import uuid as _uuid
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
+    path = f"{_uuid.uuid4()}.{ext}"
+    sb = get_sb()
+    sb.storage.from_("competitor-ads").upload(
+        path, file_bytes,
+        file_options={"content-type": mime_type, "upsert": "true"},
+    )
+    return sb.storage.from_("competitor-ads").get_public_url(path)
+
+
 def build_competitor_filename(brand_name: str, product_name: str, competitor_url: str, variant_index: int) -> str:
     """static_[brand]_[product]_comp_[domain]_v[N]_[date]"""
     try:
@@ -2732,21 +2745,22 @@ elif page == "image-ads":
         with cr_col:
             st.markdown('<span class="sec-label">Output</span>', unsafe_allow_html=True)
 
-            comp_url_preview = st.session_state.get("comp_img_url", "")
-            if comp_url_preview and comp_url_preview.startswith("http") and not is_private_cdn_url(comp_url_preview)[0]:
-                encoded_prev = urllib.parse.quote(comp_url_preview.strip(), safe="")
-                proxy_prev   = f"https://images.weserv.nl/?url={encoded_prev}&w=400&output=jpg"
+            comp_preview_bytes = st.session_state.get("comp_preview_bytes")
+            if comp_preview_bytes and not st.session_state.comp_job_submitted:
+                import base64 as _b64
+                _mime = st.session_state.get("comp_preview_mime", "image/jpeg")
+                _src  = f"data:{_mime};base64,{_b64.b64encode(comp_preview_bytes).decode()}"
                 st.markdown(
                     f'<div style="margin-bottom:10px">'
                     f'<span class="sec-label">Competitor Ad</span>'
-                    f'<img src="{proxy_prev}" style="width:100%;max-height:200px;object-fit:contain;'
-                    f'border-radius:8px;background:#F8F8F6;display:block" /></div>',
+                    f'<img src="{_src}" style="width:100%;max-height:220px;object-fit:contain;'
+                    f'border-radius:8px;background:#F8F8F6;display:block;margin-top:6px" /></div>',
                     unsafe_allow_html=True,
                 )
             else:
                 st.markdown(
                     '<div class="kie-img-placeholder" style="border-color:#EFEFED;background:#F8F8F6;margin-bottom:10px">'
-                    '🕵️ Paste a competitor ad URL to preview</div>',
+                    '🕵️ Upload a competitor ad screenshot to preview</div>',
                     unsafe_allow_html=True,
                 )
 
@@ -2903,45 +2917,27 @@ elif page == "image-ads":
 
             st.markdown('<hr class="kie-divider">', unsafe_allow_html=True)
             st.markdown('<span class="sec-label" style="color:#9A9A9A">🕵️ Competitor creative</span>', unsafe_allow_html=True)
-            competitor_url = st.text_input(
-                "Competitor ad URL",
-                placeholder="Paste URL of competitor ad screenshot...",
-                key="comp_img_url",
+            comp_uploaded_file = st.file_uploader(
+                "Upload competitor ad",
+                type=["png", "jpg", "jpeg", "webp", "gif"],
+                key="comp_img_upload",
                 label_visibility="collapsed",
+                help="Upload a screenshot of the competitor ad you want to reverse-engineer",
             )
             st.markdown(
                 '<div style="font-size:10px;color:#9A9A9A;margin-top:4px">'
-                '💡 Use <strong>Imgur</strong> or <strong>Google Drive</strong> public links. '
-                'Facebook/Instagram CDN links are not supported.</div>',
+                '📎 Upload a screenshot of the competitor ad (PNG, JPG, WEBP). '
+                'The image will be saved to your workspace and sent to the AI pipeline.</div>',
                 unsafe_allow_html=True,
             )
-            if competitor_url:
-                is_private, platform = is_private_cdn_url(competitor_url)
-                if is_private:
-                    st.markdown(f"""
-                    <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;
-                                padding:12px 14px;margin:8px 0">
-                        <div style="font-size:12px;font-weight:600;color:#f97316;margin-bottom:4px">
-                            ⚠️ {platform} CDN URL — Not supported
-                        </div>
-                        <div style="font-size:11px;color:#7d6050;line-height:1.5">
-                            This URL is session-authenticated and expires.
-                            No external service can access it.<br><br>
-                            <strong style="color:#d97706">How to fix:</strong><br>
-                            1. Save the ad screenshot to your device<br>
-                            2. Upload it to <a href="https://imgur.com/upload" target="_blank"
-                               style="color:#f97316">Imgur</a> or
-                               <a href="https://drive.google.com" target="_blank"
-                               style="color:#f97316">Google Drive</a><br>
-                            3. Paste the public image URL here
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    comp_url_valid = False
-                else:
-                    comp_url_valid = competitor_url.startswith("http")
+
+            # Cache preview bytes so the right column can show it
+            if comp_uploaded_file is not None:
+                st.session_state.comp_preview_bytes = comp_uploaded_file.getvalue()
+                st.session_state.comp_preview_mime  = comp_uploaded_file.type
+                comp_file_valid = True
             else:
-                comp_url_valid = False
+                comp_file_valid = False
 
             competitor_notes = st.text_area(
                 "Notes (optional)",
@@ -2957,10 +2953,8 @@ elif page == "image-ads":
             cr_missing_logo = not (comp_brand.get("logo_url") or "").strip()
             cr_missing_img  = not (comp_product or {}).get("image_url", "").strip() if comp_product else True
 
-            if not competitor_url:
-                st.info("💡 Paste a competitor ad URL above")
-            elif not comp_url_valid and not is_private_cdn_url(competitor_url)[0]:
-                st.warning("⚠️ URL must start with http")
+            if not comp_file_valid:
+                st.info("💡 Upload a screenshot of the competitor ad above")
             if cr_missing_img and comp_product:
                 st.warning("⚠️ Product has no image URL — edit in Products")
             if cr_missing_logo:
@@ -2969,7 +2963,7 @@ elif page == "image-ads":
             is_polling_cr = bool(st.session_state.pending_comp_ugc_id)
             comp_btn = st.button(
                 f"🔍  Analyse & Generate  ·  {comp_variations} variant{'s' if comp_variations > 1 else ''}",
-                disabled=(cr_missing_logo or cr_missing_img or not comp_url_valid or is_polling_cr or st.session_state.comp_job_submitted),
+                disabled=(cr_missing_logo or cr_missing_img or not comp_file_valid or is_polling_cr or st.session_state.comp_job_submitted),
                 use_container_width=True,
                 type="primary",
                 key="comp_btn",
@@ -2977,6 +2971,21 @@ elif page == "image-ads":
 
         # Fire-and-poll: queue job, rerun immediately to show loading, fire POST on next render
         if comp_btn and not st.session_state.comp_job_submitted:
+            # Upload competitor image to Supabase first
+            _file_bytes = st.session_state.get("comp_preview_bytes")
+            _file_mime  = st.session_state.get("comp_preview_mime", "image/jpeg")
+            _file_name  = getattr(comp_uploaded_file, "name", "competitor.jpg") if comp_uploaded_file else "competitor.jpg"
+            competitor_supabase_url = ""
+            if _file_bytes:
+                try:
+                    with st.spinner("Uploading competitor image…"):
+                        competitor_supabase_url = upload_competitor_image_to_supabase(
+                            _file_bytes, _file_name, _file_mime
+                        )
+                except Exception as _ue:
+                    st.error(f"Image upload failed: {_ue}")
+                    st.stop()
+
             st.session_state.comp_job_submitted = True
             ugc_id = f"ugc_{int(time.time())}"
             st.session_state.deferred_comp = {
@@ -2991,7 +3000,7 @@ elif page == "image-ads":
                     "asset_url":            comp_product["image_url"],
                     "logo_url":             comp_brand["logo_url"],
                     "brand_id":             comp_brand["id"],
-                    "competitor_image_url": competitor_url,
+                    "competitor_image_url": competitor_supabase_url,
                     "competitor_notes":     competitor_notes or "",
                 },
             }
@@ -3002,7 +3011,7 @@ elif page == "image-ads":
                 "product_id":    comp_product["id"],
                 "product_name":  comp_product["name"],
                 "brand_name":    comp_brand["name"],
-                "competitor_url": competitor_url,
+                "competitor_url": competitor_supabase_url,
             }
             st.session_state.pop("last_comp_results", None)
             inject_generation_guard(True)
