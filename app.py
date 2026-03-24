@@ -121,9 +121,20 @@ html, body, [class*="css"] {
 header[data-testid="stHeader"] { display: none !important; }
 .page-header h1 a, h1 a, h2 a, h3 a,
 [data-testid="stMarkdownContainer"] h1 a { display: none !important; }
-/* Hide hamburger menu; keep only the «/» collapse arrows */
+/* Hide Streamlit header buttons we don't need */
 button[kind="header"] { display: none !important; }
-[data-testid="collapsedControl"] { display: none !important; }
+/* Style the re-open arrow (collapsedControl) — visible when sidebar is closed */
+[data-testid="collapsedControl"] {
+  background: var(--bg-e) !important;
+  border: 1px solid var(--bd) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
+}
+[data-testid="collapsedControl"] button,
+[data-testid="collapsedControl"] svg {
+  color: var(--tx2) !important;
+  fill: var(--tx2) !important;
+}
 
 /* ─── Remove all top dead space from Streamlit shell ── */
 .stApp > header,
@@ -801,23 +812,7 @@ body.adfl-dark [data-testid="stDataFrame"] canvas { filter: invert(1) hue-rotate
 st_components.html("""<script>
 (function() {
   var doc = window.parent.document;
-  // Hide hamburger menu — try every known Streamlit selector
-  var HAMBURGER_SELECTORS = [
-    '[data-testid="collapsedControl"]',
-    '[data-testid="stSidebarCollapsedControl"]',
-    'button[aria-label="open sidebar"]',
-    'button[aria-label="Open sidebar"]',
-    'button[aria-label="Open Sidebar"]',
-  ];
-  function hideHamburger() {
-    HAMBURGER_SELECTORS.forEach(function(sel) {
-      doc.querySelectorAll(sel).forEach(function(el) {
-        el.style.setProperty('display', 'none', 'important');
-      });
-    });
-  }
-  hideHamburger();
-  new MutationObserver(hideHamburger).observe(doc.body, { childList: true, subtree: true });
+  // collapsedControl is intentionally NOT hidden — it's the reopen arrow when sidebar is closed
 })();
 </script>""", height=0)
 
