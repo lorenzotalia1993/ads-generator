@@ -442,6 +442,17 @@ input:-webkit-autofill:active {
   -webkit-text-fill-color: var(--tx2) !important;
 }
 
+/* ── File uploader ────────────────────────────────── */
+[data-testid="stFileUploader"] section { background: var(--bg-input) !important; border-color: var(--bd) !important; }
+[data-testid="stFileUploader"] section span,
+[data-testid="stFileUploader"] section small,
+[data-testid="stFileUploader"] section p { color: var(--tx2) !important; }
+[data-testid="stFileUploaderFileName"],
+[data-testid="stFileUploaderFile"] span,
+[data-testid="stFileUploaderFile"] small,
+[data-testid="stFileUploaderFile"] p { color: var(--tx) !important; }
+[data-testid="stFileUploaderFile"] { background: var(--bg-hover) !important; border-radius: 6px !important; }
+
 /* ── Form labels ──────────────────────────────────── */
 [data-testid="stTextInput"] label,
 [data-testid="stTextArea"] label,
