@@ -252,6 +252,26 @@ h3 { font-size: 12px !important; font-weight: 500 !important; color: var(--tx2) 
   transform: none !important; filter: none !important;
 }
 
+/* ─── Sidebar HTML nav links ───────────────────────── */
+[data-testid="stSidebar"] a.sb-nav-link {
+  display: flex !important; align-items: center !important;
+  width: 100% !important; box-sizing: border-box !important;
+  padding: 0 12px !important; height: 34px !important;
+  border-radius: 6px !important; text-decoration: none !important;
+  font-size: 12.5px !important; font-family: 'Inter', sans-serif !important;
+  letter-spacing: 0 !important; line-height: 1 !important;
+  transition: background 0.1s, color 0.1s !important;
+}
+[data-testid="stSidebar"] a.sb-nav-link:hover {
+  background: var(--side-hover-bg) !important;
+  color: var(--side-text-h) !important;
+}
+[data-testid="stSidebar"] a.sb-nav-active {
+  background: var(--side-active-bg) !important;
+  color: var(--side-active-tx) !important;
+  font-weight: 600 !important;
+}
+
 /* ─── Nav labels / divider ─────────────────────────── */
 .nav-cat {
   font-family: 'Inter', sans-serif !important; font-size: 9.5px !important;
@@ -2024,6 +2044,12 @@ if not st.session_state.auth_user:
         except Exception:
             st.query_params.pop("_s", None)
 
+# ─── Nav query param: sidebar link clicks ────────────────────────────────────
+_nav_qp = st.query_params.get("nav", "")
+if _nav_qp and st.session_state.get("auth_user"):
+    if _nav_qp != st.session_state.get("page", "home"):
+        st.session_state.page = _nav_qp
+
 # ─── Login gate ───────────────────────────────────────────────────────────────
 if not st.session_state.auth_user:
     _, login_col, _ = st.columns([1, 1.4, 1])
@@ -2102,17 +2128,22 @@ def _image_preview_dialog():
 
 # ─── Sidebar navigation ───────────────────────────────────────────────────────
 def _nav(label: str, key: str, indent: bool = False):
-    """Render a sidebar nav button, primary style when active."""
-    pfx  = "  " if indent else ""
+    """Render a sidebar nav item as a plain HTML link — full left-align control."""
     active = st.session_state.page == key
-    if st.sidebar.button(
-        f"{pfx}{label}",
-        key=f"_nb_{key}",
-        use_container_width=True,
-        type="primary" if active else "secondary",
-    ):
-        st.session_state.page = key
-        st.rerun()
+    _s = st.query_params.get("_s", "")
+    url = f"?nav={key}" + (f"&_s={_s}" if _s else "")
+    active_style = (
+        "background:var(--side-active-bg);color:var(--side-active-tx)!important;font-weight:600;"
+        if active else
+        "background:transparent;color:var(--side-text)!important;font-weight:400;"
+    )
+    st.sidebar.markdown(f"""
+<a class="sb-nav-link{'  sb-nav-active' if active else ''}" href="{url}" target="_self"
+   style="display:flex;align-items:center;width:100%;box-sizing:border-box;
+          padding:0 12px;height:34px;border-radius:6px;border:none;
+          font-size:12.5px;font-family:'Inter',sans-serif;letter-spacing:0;
+          text-decoration:none;line-height:1;{active_style}">{label}</a>
+""", unsafe_allow_html=True)
 
 with st.sidebar:
     _name_display = st.session_state.get("auth_name", "User")
