@@ -2819,20 +2819,22 @@ elif page == "image-ads":
 
                 try:
                     poll_resp = requests.get(RESULTS_POLL_URL, params={"ugc_id": ugc_id}, timeout=10)
-                    poll_data = poll_resp.json()
+                    _raw = poll_resp.json()
+                    # n8n may return a list — unwrap to dict
+                    poll_data = _raw[0] if isinstance(_raw, list) and _raw else (_raw if isinstance(_raw, dict) else {})
                 except Exception:
                     poll_data = {"status": "processing"}
-
-                # Debug: show raw poll response in expander
-                with st.expander("🔍 Debug — poll response", expanded=False):
-                    st.caption(f"ugc_id: `{ugc_id}`")
-                    st.json(poll_data)
 
                 # Accept both "done" and "completed" status from n8n
                 poll_status = poll_data.get("status", "")
                 raw_images  = poll_data.get("images", [])
 
-                # Also handle n8n returning a single image URL directly
+                # Normalise image dicts: support both "url" and "image_url" keys
+                raw_images = [
+                    {**img, "url": img.get("url") or img.get("image_url", "")}
+                    for img in raw_images
+                ]
+                # Also handle n8n returning a single image URL at top level
                 if not raw_images and poll_data.get("url"):
                     raw_images = [{"url": poll_data["url"]}]
                 if not raw_images and poll_data.get("image_url"):
