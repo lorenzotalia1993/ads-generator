@@ -185,17 +185,19 @@ h3 { font-size: 12px !important; font-weight: 500 !important; color: var(--tx2) 
 }
 [data-testid="stSidebar"] * { color: inherit; }
 
-/* Strip all Streamlit default spacing from sidebar containers */
+/* Strip ALL Streamlit default spacing from sidebar — every layer */
 [data-testid="stSidebar"] .stVerticalBlock,
-[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0 !important; }
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0 !important; padding: 0 !important; }
 [data-testid="stSidebar"] .element-container {
   margin: 0 !important; padding: 0 !important; min-height: 0 !important;
 }
-[data-testid="stSidebar"] .stMarkdown { margin: 0 !important; padding: 0 !important; }
+[data-testid="stSidebar"] .stMarkdown,
+[data-testid="stSidebar"] .stMarkdown > div { margin: 0 !important; padding: 0 !important; }
 [data-testid="stSidebar"] .block-container { padding: 0 !important; }
 /* Make sidebar a flex column so the footer can be pushed to the bottom */
 [data-testid="stSidebarContent"],
-[data-testid="stSidebar"] > div:first-child,
+[data-testid="stSidebar"] > div,
+[data-testid="stSidebar"] > div > div,
 [data-testid="stSidebar"] section {
   display: flex !important; flex-direction: column !important;
   height: 100% !important; overflow-y: auto !important;
@@ -206,13 +208,14 @@ h3 { font-size: 12px !important; font-weight: 500 !important; color: var(--tx2) 
 [data-testid="stSidebar"] .element-container:has(.sb-flex-spacer) { flex: 1 1 auto !important; min-height: 32px !important; }
 
 /* ─── Sidebar nav — buttons ────────────────────────── */
-[data-testid="stSidebar"] .stButton { margin: 0 !important; padding: 0 !important; }
-[data-testid="stSidebar"] .stButton > div { margin: 0 !important; }
+[data-testid="stSidebar"] .stButton,
+[data-testid="stSidebar"] .stButton > div,
+[data-testid="stSidebar"] .stButton > div > div { margin: 0 !important; padding: 0 !important; }
 [data-testid="stSidebar"] .stButton button {
   text-align: left !important; justify-content: flex-start !important;
   border: none !important; border-radius: 6px !important;
   font-size: 12.5px !important; font-weight: 400 !important;
-  height: 34px !important; padding: 0 10px !important;
+  height: 34px !important; padding: 0 12px !important;
   width: 100% !important; box-shadow: none !important;
   transform: none !important; letter-spacing: 0 !important;
   font-family: 'Inter', sans-serif !important; transition: background 0.1s, color 0.1s !important;
@@ -243,7 +246,7 @@ h3 { font-size: 12px !important; font-weight: 500 !important; color: var(--tx2) 
   font-family: 'Inter', sans-serif !important; font-size: 9.5px !important;
   font-weight: 700 !important; color: var(--tx2) !important;
   text-transform: uppercase !important; letter-spacing: 0.08em !important;
-  padding: 12px 10px 3px !important; display: block !important;
+  padding: 12px 12px 3px !important; display: block !important;
   line-height: 1 !important;
 }
 /* First nav-cat — tighter top since logo is above */
@@ -2106,7 +2109,7 @@ with st.sidebar:
 
     # ── Logo ──────────────────────────────────────────────────────────────────
     st.markdown("""
-    <div class="sb-logo-wrap" style="padding:12px 10px 10px;border-bottom:1px solid var(--side-border);margin-bottom:0">
+    <div class="sb-logo-wrap" style="padding:12px 12px 10px;border-bottom:1px solid var(--side-border);margin-bottom:0">
         <div style="display:flex;align-items:center;gap:9px">
             <div style="width:30px;height:30px;background:#1A1A1A;border-radius:7px;
                         display:flex;align-items:center;justify-content:center;flex-shrink:0">
@@ -2163,7 +2166,7 @@ with st.sidebar:
     st.markdown('<div class="sb-flex-spacer"></div>', unsafe_allow_html=True)
     st.markdown('<hr class="nav-divider" style="margin:20px 0 4px">', unsafe_allow_html=True)
     st.markdown(f"""
-    <div style="display:flex;align-items:center;gap:9px;padding:6px 10px 10px">
+    <div style="display:flex;align-items:center;gap:9px;padding:6px 12px 10px">
         <div style="width:28px;height:28px;border-radius:50%;background:#3B82F6;
                     display:flex;align-items:center;justify-content:center;
                     font-size:11px;font-weight:700;color:#FFFFFF;flex-shrink:0;
