@@ -4,3 +4,5 @@ plotly
 supabase
 altair
 requests
+bcrypt
+streamlit-autorefresh

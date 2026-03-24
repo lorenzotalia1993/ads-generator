@@ -12,6 +12,18 @@ import urllib.parse
 import pandas as pd
 import altair as alt
 from datetime import datetime, timedelta
+import html as _html
+import uuid as _uuid_mod
+
+try:
+    from streamlit_autorefresh import st_autorefresh as _st_autorefresh
+    _HAS_AUTOREFRESH = True
+except ImportError:
+    _HAS_AUTOREFRESH = False
+
+def safe(text) -> str:
+    """Escape user-controlled text before interpolating into HTML."""
+    return _html.escape(str(text or ""))
 
 # ─── Page config ─────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -968,7 +980,19 @@ def get_sb_admin():
 # ─── Auth helpers ─────────────────────────────────────────────────────────────
 
 def _hash_pw(pw: str) -> str:
-    return hashlib.sha256(pw.encode()).hexdigest()
+    """Hash a new password with bcrypt."""
+    import bcrypt as _bcrypt
+    return _bcrypt.hashpw(pw.encode(), _bcrypt.gensalt()).decode()
+
+def _check_pw(pw: str, stored: str) -> bool:
+    """Verify a password against stored hash (supports both bcrypt and legacy SHA-256)."""
+    import bcrypt as _bcrypt
+    try:
+        return _bcrypt.checkpw(pw.encode(), stored.encode())
+    except Exception:
+        # Legacy SHA-256 fallback for existing accounts
+        import hashlib
+        return hashlib.sha256(pw.encode()).hexdigest() == stored
 
 def auth_check_login(email: str, password: str):
     """Return user dict if credentials valid, else None."""
@@ -979,7 +1003,7 @@ def auth_check_login(email: str, password: str):
         if not rows:
             return None
         u = rows[0]
-        if u.get("password_hash") == _hash_pw(password):
+        if _check_pw(password, u.get("password_hash", "")):
             return u
         return None
     except Exception:
@@ -1009,6 +1033,62 @@ def auth_delete_user(user_id) -> bool:
         return True
     except Exception:
         return False
+
+# NOTE: Run this SQL in Supabase Dashboard > SQL Editor to enable secure sessions:
+# CREATE TABLE IF NOT EXISTS user_sessions (
+#   id BIGSERIAL PRIMARY KEY,
+#   token UUID NOT NULL UNIQUE,
+#   user_id TEXT NOT NULL,
+#   expires_at TIMESTAMPTZ NOT NULL,
+#   created_at TIMESTAMPTZ DEFAULT NOW()
+# );
+# CREATE INDEX ON user_sessions(token);
+# CREATE INDEX ON user_sessions(expires_at);
+
+def _create_session_token(user_id: str) -> str:
+    """Create a secure session token in the user_sessions table. Returns the token."""
+    import datetime as _dt
+    token = str(_uuid_mod.uuid4())
+    expires_at = (_dt.datetime.utcnow() + _dt.timedelta(days=30)).isoformat()
+    try:
+        get_sb().table("user_sessions").insert({
+            "token": token,
+            "user_id": user_id,
+            "expires_at": expires_at,
+        }).execute()
+    except Exception:
+        pass  # Table may not exist yet — fail silently
+    return token
+
+def _validate_session_token(token: str):
+    """Look up a session token. Returns user dict or None."""
+    import datetime as _dt
+    if not token or len(token) < 10:
+        return None
+    try:
+        result = get_sb().table("user_sessions").select("user_id, expires_at").eq("token", token).execute()
+        if not result.data:
+            return None
+        row = result.data[0]
+        # Check expiry
+        exp = _dt.datetime.fromisoformat(row["expires_at"].replace("Z", "+00:00"))
+        now = _dt.datetime.now(_dt.timezone.utc)
+        if exp < now:
+            # Expired — delete it
+            get_sb().table("user_sessions").delete().eq("token", token).execute()
+            return None
+        # Look up the user
+        user_result = get_sb().table("users").select("*").eq("id", row["user_id"]).execute()
+        return user_result.data[0] if user_result.data else None
+    except Exception:
+        return None
+
+def _delete_session_token(token: str):
+    """Invalidate a session token on logout."""
+    try:
+        get_sb().table("user_sessions").delete().eq("token", token).execute()
+    except Exception:
+        pass
 
 if "generating"          not in st.session_state: st.session_state.generating          = False
 if "pending_ugc_id"      not in st.session_state: st.session_state.pending_ugc_id      = None
@@ -1180,21 +1260,35 @@ def save_ad_image(brand_id, image_url, filename="", mode="ugc-generated"):
     except Exception as e:
         st.error(f"Error saving ad image: {e}")
 
-def get_saved_ads(brand_id=None):
+@st.cache_data(ttl=30)
+def get_saved_ads(limit: int = 24, offset: int = 0, brand_id=None, mode_filter=None):
     try:
         sb = get_sb()
-        ads_result = sb.table("saved_ads").select("*").order("created_at", desc=True).execute()
-        ads = ads_result.data or []
+        q = sb.table("saved_ads").select("*").order("created_at", desc=True)
+        if brand_id:
+            q = q.eq("brand_id", brand_id)
+        if mode_filter:
+            q = q.eq("mode", mode_filter)
+        if not brand_id and not mode_filter:
+            q = q.range(offset, offset + limit - 1)
+        result = q.execute()
+        ads = result.data or []
         brands_result = sb.table("brands").select("id, name").execute()
         brand_map = {b["id"]: b["name"] for b in (brands_result.data or [])}
         for ad in ads:
             ad["brand_name"] = brand_map.get(ad.get("brand_id"), "")
-        if brand_id:
-            ads = [a for a in ads if str(a.get("brand_id", "")) == str(brand_id)]
         return ads
     except Exception as e:
         st.error(f"Error fetching saved ads: {e}")
         return []
+
+@st.cache_data(ttl=30)
+def get_saved_ads_count() -> int:
+    try:
+        result = get_sb().table("saved_ads").select("id", count="exact").execute()
+        return result.count or 0
+    except Exception:
+        return 0
 
 def save_to_history(ugc_id, product_id, product_name, brand_name, variants_qty, images, mode="data_driven"):
     try:
@@ -1211,14 +1305,23 @@ def save_to_history(ugc_id, product_id, product_name, brand_name, variants_qty, 
     except Exception as e:
         st.error(f"Error saving to history: {e}")
 
-def get_history():
+@st.cache_data(ttl=30)
+def get_history(limit: int = 20, offset: int = 0):
     try:
         sb = get_sb()
-        result = sb.table("generation_history").select("*").order("created_at", desc=True).execute()
+        result = sb.table("generation_history").select("*").order("created_at", desc=True).range(offset, offset + limit - 1).execute()
         return result.data or []
     except Exception as e:
         st.error(f"Error fetching history: {e}")
         return []
+
+@st.cache_data(ttl=30)
+def get_history_count() -> int:
+    try:
+        result = get_sb().table("generation_history").select("id", count="exact").execute()
+        return result.count or 0
+    except Exception:
+        return 0
 
 def clear_history():
     try:
@@ -1226,6 +1329,59 @@ def clear_history():
         sb.table("generation_history").delete().neq("id", 0).execute()
     except Exception as e:
         st.error(f"Error clearing history: {e}")
+
+# NOTE: Run this SQL in Supabase to enable job persistence:
+# CREATE TABLE IF NOT EXISTS generation_jobs (
+#   id BIGSERIAL PRIMARY KEY,
+#   ugc_id TEXT NOT NULL UNIQUE,
+#   user_id TEXT,
+#   mode TEXT,
+#   status TEXT DEFAULT 'pending',
+#   brand_id TEXT,
+#   product_id TEXT,
+#   meta_json JSONB,
+#   created_at TIMESTAMPTZ DEFAULT NOW(),
+#   updated_at TIMESTAMPTZ DEFAULT NOW()
+# );
+
+def upsert_generation_job(ugc_id: str, user_id: str, mode: str, brand_id: str = "",
+                           product_id: str = "", meta: dict = None, status: str = "pending"):
+    """Write/update a generation job record so it survives browser refresh."""
+    try:
+        import datetime as _dt
+        get_sb().table("generation_jobs").upsert({
+            "ugc_id": ugc_id,
+            "user_id": user_id,
+            "mode": mode,
+            "status": status,
+            "brand_id": brand_id,
+            "product_id": product_id,
+            "meta_json": meta or {},
+            "updated_at": _dt.datetime.utcnow().isoformat(),
+        }, on_conflict="ugc_id").execute()
+    except Exception:
+        pass  # Table may not exist yet
+
+def get_pending_job(user_id: str) -> dict | None:
+    """Return the most recent pending job for this user, if any."""
+    try:
+        result = get_sb().table("generation_jobs").select("*") \
+            .eq("user_id", user_id).eq("status", "pending") \
+            .order("created_at", desc=True).limit(1).execute()
+        return result.data[0] if result.data else None
+    except Exception:
+        return None
+
+def mark_job_done(ugc_id: str):
+    """Mark a generation job as completed."""
+    try:
+        import datetime as _dt
+        get_sb().table("generation_jobs").update({
+            "status": "done",
+            "updated_at": _dt.datetime.utcnow().isoformat()
+        }).eq("ugc_id", ugc_id).execute()
+    except Exception:
+        pass
 
 def analytics_dataframe():
     try:
@@ -1700,12 +1856,12 @@ def render_product_card(product: dict, brand_name: str) -> str:
     )
     benefits = parse_benefits(product.get("key_benefits", ""), max_items=3, max_chars=25)
     pills = "".join([
-        f'<span style="display:inline-block;background:#EFEFED;border:1px solid #E8E8E6;color:#9A9A9A;font-size:10px;padding:1px 8px;border-radius:20px;margin:1px 2px">{b}</span>'
+        f'<span style="display:inline-block;background:#EFEFED;border:1px solid #E8E8E6;color:#9A9A9A;font-size:10px;padding:1px 8px;border-radius:20px;margin:1px 2px">{safe(b)}</span>'
         for b in benefits
     ])
     offer = product.get("offer_promotion", "")
     show_offer = bool(offer and offer.strip().lower() not in ("", "none", "n/a", "no promo for now"))
-    offer_html = f'<span style="font-size:10px;color:#3fb950;margin-left:8px">🎁 {offer[:40]}</span>' if show_offer else ""
+    offer_html = f'<span style="font-size:10px;color:#3fb950;margin-left:8px">🎁 {safe(offer[:40])}</span>' if show_offer else ""
     desc = product.get("description", "") or ""
     desc_short = desc[:80] + "…" if len(desc) > 80 else desc
     return (
@@ -1716,12 +1872,12 @@ def render_product_card(product: dict, brand_name: str) -> str:
         f'<div style="flex:1;min-width:0">'
         f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'
         f'<span style="font-size:14px;font-weight:600;color:#1A1A1A;font-family:Fraunces,serif;'
-        f'letter-spacing:-0.02em">{product["name"]}</span>'
+        f'letter-spacing:-0.02em">{safe(product["name"])}</span>'
         f'<span style="font-size:10px;color:#6B6B6B;background:#F2F2F0;padding:2px 8px;'
-        f'border-radius:20px;border:1px solid #EFEFED">{brand_name}</span>'
+        f'border-radius:20px;border:1px solid #EFEFED">{safe(brand_name)}</span>'
         f'{offer_html}</div>'
         f'<div style="font-size:11px;color:#9A9A9A;margin-bottom:6px;line-height:1.4;white-space:nowrap;'
-        f'overflow:hidden;text-overflow:ellipsis">{desc_short}</div>'
+        f'overflow:hidden;text-overflow:ellipsis">{safe(desc_short)}</div>'
         f'<div>{pills}</div>'
         f'</div></div>'
     )
@@ -1740,7 +1896,7 @@ def render_brand_card(brand: dict) -> str:
     tone_html = (
         f'<span style="font-size:10px;color:#6B6B6B;background:rgba(200,240,96,0.08);padding:2px 9px;'
         f'border-radius:20px;border:1px solid rgba(200,240,96,0.12);margin-top:5px;display:inline-block;'
-        f'font-weight:500">{tone}</span>'
+        f'font-weight:500">{safe(tone)}</span>'
         if tone else ""
     )
     return (
@@ -1750,9 +1906,9 @@ def render_brand_card(brand: dict) -> str:
         f'{img_html}'
         f'<div style="flex:1;min-width:0">'
         f'<div style="font-size:14px;font-weight:700;color:#1A1A1A;margin-bottom:3px;'
-        f'font-family:Fraunces,serif;letter-spacing:-0.02em">{brand["name"]}</div>'
+        f'font-family:Fraunces,serif;letter-spacing:-0.02em">{safe(brand["name"])}</div>'
         f'<div style="font-size:11px;color:#6B6B6B;white-space:nowrap;overflow:hidden;'
-        f'text-overflow:ellipsis">{tagline[:60]}</div>'
+        f'text-overflow:ellipsis">{safe(tagline[:60])}</div>'
         f'{tone_html}</div></div>'
     )
 
@@ -1805,7 +1961,7 @@ def _ad_info_html(
         f'border:1px solid #E8E8E6;letter-spacing:0.6px;'
         f'white-space:nowrap;flex-shrink:0">{platform}</span>'
         f'<span style="font-family:\'DM Mono\',monospace;font-size:9px;color:#6B6B6B;'
-        f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{filename}</span>'
+        f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{safe(filename)}</span>'
         f'</div>'
     )
 
@@ -1851,6 +2007,14 @@ def render_image_grid(images: list[dict], brand_id: int, key_prefix: str):
 def render_output_panel(key_prefix: str = "dd"):
     st.markdown('<span class="sec-label">Output</span>', unsafe_allow_html=True)
 
+    # Recover pending data-driven job on page reload
+    if not st.session_state.pending_ugc_id and not st.session_state.job_submitted:
+        _pending = get_pending_job(str(st.session_state.auth_user or ""))
+        if _pending and _pending.get("mode") == "data_driven":
+            st.session_state.pending_ugc_id = _pending["ugc_id"]
+            st.session_state.job_submitted  = True
+            st.session_state.pending_dd_meta = _pending.get("meta_json") or {}
+
     ugc_id = st.session_state.pending_ugc_id or ""
     is_manual_job = ugc_id.startswith("manual_")
     panel_matches = (key_prefix == "manual") == is_manual_job
@@ -1893,6 +2057,7 @@ def render_output_panel(key_prefix: str = "dd"):
                 images       = images,
                 mode         = "data_driven",
             )
+            mark_job_done(poll_data.get("ugc_id", ugc_id))
             st.session_state["last_results"]          = images
             st.session_state["last_results_brand_id"] = meta.get("brand_id")
             st.session_state["last_results_product"]  = meta.get("product_name", "")
@@ -1922,8 +2087,11 @@ def render_output_panel(key_prefix: str = "dd"):
                 inject_generation_guard(False)
                 st.rerun()
             st.session_state.poll_count += 1
-            time.sleep(5)
-            st.rerun()
+            if _HAS_AUTOREFRESH:
+                _st_autorefresh(interval=5000, key="autorefresh_poll", limit=None)
+            else:
+                time.sleep(5)
+                st.rerun()
 
     elif st.session_state.get("last_results") and (st.session_state.get("last_results_mode", "dd") == key_prefix):
         images   = st.session_state["last_results"]
@@ -2193,17 +2361,16 @@ def render_manual_prompt_tab(brands):
 if not st.session_state.auth_user:
     _saved_s = st.query_params.get("_s", "")
     if _saved_s:
-        try:
-            _res = get_sb().table("users").select("*").eq("id", _saved_s).execute()
-            if _res.data:
-                _su = _res.data[0]
-                st.session_state.auth_user  = _su["id"]
-                st.session_state.auth_role  = _su.get("role", "user")
-                st.session_state.auth_name  = _su.get("name", "")
-                st.session_state.auth_email = _su.get("email", "")
-                st.session_state.page       = "home"
-                st.rerun()
-        except Exception:
+        _session_user = _validate_session_token(_saved_s)
+        if _session_user:
+            st.session_state.auth_user  = _session_user["id"]
+            st.session_state.auth_role  = _session_user.get("role", "user")
+            st.session_state.auth_name  = _session_user.get("name", "")
+            st.session_state.auth_email = _session_user.get("email", "")
+            st.session_state["_session_token"] = _saved_s
+            st.session_state.page       = "home"
+            st.rerun()
+        else:
             st.query_params.pop("_s", None)
 
 # ─── Nav query param: sidebar link clicks ────────────────────────────────────
@@ -2253,7 +2420,9 @@ if not st.session_state.auth_user:
                     st.session_state.auth_email = user.get("email", login_email)
                     st.session_state.page       = "home"
                     if remember_me:
-                        st.query_params["_s"] = str(user["id"])
+                        _token = _create_session_token(str(user["id"]))
+                        st.query_params["_s"] = _token
+                        st.session_state["_session_token"] = _token
                     st.rerun()
                 else:
                     st.error("Invalid email or password.")
@@ -2379,13 +2548,13 @@ with st.sidebar:
                     display:flex;align-items:center;justify-content:center;
                     font-size:11px;font-weight:700;color:#FFFFFF;flex-shrink:0;
                     font-family:'Inter',sans-serif;line-height:1">
-            {_name_display[0].upper() if _name_display else "U"}
+            {safe(_name_display[0].upper() if _name_display else "U")}
         </div>
         <div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:1px;justify-content:center">
             <div style="font-size:12.5px;font-weight:600;color:var(--side-text-h);font-family:'Inter',sans-serif;
-                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3">{_name_display}</div>
+                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3">{safe(_name_display)}</div>
             <div style="font-size:10px;color:var(--tx3);font-family:'Inter',sans-serif;
-                        text-transform:capitalize;line-height:1.2">{_role_display}</div>
+                        text-transform:capitalize;line-height:1.2">{safe(_role_display)}</div>
         </div>
         <div style="font-size:13px;color:var(--tx3);flex-shrink:0;letter-spacing:2px;line-height:1;padding-bottom:2px">···</div>
     </div>
@@ -2397,10 +2566,14 @@ with st.sidebar:
         st.session_state.dark_mode = not st.session_state.get("dark_mode", False)
         st.rerun()
     if st.sidebar.button("Sign Out", key="_nb_logout", use_container_width=True):
+        _tok = st.session_state.get("_session_token") or st.query_params.get("_s", "")
+        if _tok:
+            _delete_session_token(_tok)
         for _k in ["auth_user", "auth_role", "auth_name", "auth_email"]:
             st.session_state[_k] = None
         st.session_state.page = "home"
         st.query_params.pop("_s", None)
+        st.session_state.pop("_session_token", None)
         st.rerun()
 
     # ── Keep brand/product data for pages ─────────────────────────────────────
@@ -2881,6 +3054,12 @@ elif page == "image-ads":
                 "product_name": dd_product["name"],
                 "brand_name":   dd_brand["name"],
             }
+            upsert_generation_job(
+                ugc_id=ugc_id, user_id=str(st.session_state.auth_user or ""),
+                mode="data_driven", brand_id=str(dd_brand["id"]),
+                product_id=str(dd_product["id"]),
+                meta=st.session_state.pending_dd_meta,
+            )
             st.session_state.pop("last_results", None)
             inject_generation_guard(True)
             st.rerun()
@@ -2913,6 +3092,14 @@ elif page == "image-ads":
                 )
 
             st.markdown('<hr class="kie-divider">', unsafe_allow_html=True)
+
+            # Recover pending job on page reload (session state is gone but job record exists)
+            if not st.session_state.pending_comp_ugc_id and not st.session_state.comp_job_submitted:
+                _pending = get_pending_job(str(st.session_state.auth_user or ""))
+                if _pending and _pending.get("mode") == "competitor_reverse":
+                    st.session_state.pending_comp_ugc_id = _pending["ugc_id"]
+                    st.session_state.comp_job_submitted   = True
+                    st.session_state.pending_comp_meta    = _pending.get("meta_json") or {}
 
             if st.session_state.comp_job_submitted and st.session_state.pending_comp_ugc_id:
                 # ── POLLING ──────────────────────────────────────────────
@@ -2996,6 +3183,7 @@ elif page == "image-ads":
                         images       = images,
                         mode         = "competitor_reverse",
                     )
+                    mark_job_done(poll_data.get("ugc_id", ugc_id))
                     st.session_state.last_comp_results          = images
                     st.session_state.last_comp_results_brand_id = meta.get("brand_id")
                     st.session_state.pending_comp_ugc_id        = None
@@ -3033,8 +3221,11 @@ elif page == "image-ads":
                         inject_generation_guard(False)
                         st.rerun()
                     st.session_state.comp_poll_count += 1
-                    time.sleep(5)
-                    st.rerun()
+                    if _HAS_AUTOREFRESH:
+                        _st_autorefresh(interval=5000, key="autorefresh_comp", limit=None)
+                    else:
+                        time.sleep(5)
+                        st.rerun()
 
             elif st.session_state.get("last_comp_results"):
                 # ── RESULTS ──────────────────────────────────────────────
@@ -3212,6 +3403,12 @@ elif page == "image-ads":
                 "brand_name":    comp_brand["name"],
                 "competitor_url": competitor_supabase_url,
             }
+            upsert_generation_job(
+                ugc_id=ugc_id, user_id=str(st.session_state.auth_user or ""),
+                mode="competitor_reverse", brand_id=str(comp_brand["id"]),
+                product_id=str(comp_product["id"]),
+                meta=st.session_state.pending_comp_meta,
+            )
             st.session_state.pop("last_comp_results", None)
             inject_generation_guard(True)
             st.rerun()
@@ -3375,11 +3572,22 @@ elif page == "library":
 
     import datetime as _dt
 
-    ads = get_saved_ads(brand_id=filter_id)
+    PAGE_SIZE = 24
+    if "lib_page" not in st.session_state:
+        st.session_state.lib_page = 0
 
-    # Mode filter
-    if lib_mode_filter != "All Modes":
-        ads = [a for a in ads if (a.get("mode") or "") == lib_mode_filter]
+    _active_brand_filter = filter_id
+    _active_mode_filter = lib_mode_filter if lib_mode_filter != "All Modes" else None
+
+    if _active_brand_filter or _active_mode_filter:
+        # When filters are active, fetch all matching (no pagination)
+        ads = get_saved_ads(limit=9999, offset=0, brand_id=_active_brand_filter, mode_filter=_active_mode_filter)
+        total_ads = len(ads)
+    else:
+        ads = get_saved_ads(limit=PAGE_SIZE, offset=st.session_state.lib_page * PAGE_SIZE)
+        total_ads = get_saved_ads_count()
+
+    total_pages = max(1, -(-total_ads // PAGE_SIZE))  # ceiling division
 
     # Product filter: the filename (headline) is "static_{brand_slug}_{product_slug}_..."
     # search the product slug as a plain substring — do NOT slugify the whole filename
@@ -3473,7 +3681,7 @@ elif page == "library":
                     f'  </div>'
                     f'  <div class="card-info-wrap" style="padding:6px 8px 4px;background:var(--card-bg)">'
                     f'    <div class="card-info-title" style="font-size:10.5px;font-weight:600;color:var(--tx);font-family:Inter,sans-serif;'
-                    f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{_ltitle_s}</div>'
+                    f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{safe(_ltitle_s)}</div>'
                     f'    <div class="card-info-date" style="font-size:9px;color:var(--tx2);font-family:DM Mono,monospace;margin-top:1px">{_lcreated}</div>'
                     f'  </div>'
                     f'</div>',
@@ -3499,6 +3707,25 @@ elif page == "library":
                         'Unavailable</div>', unsafe_allow_html=True
                     )
 
+        # ── Pagination controls ──
+        if total_pages > 1 and not _active_brand_filter and not _active_mode_filter:
+            st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+            pg_cols = st.columns([1, 3, 1])
+            with pg_cols[0]:
+                if st.session_state.lib_page > 0:
+                    if st.button("← Previous", key="lib_prev"):
+                        st.session_state.lib_page -= 1
+                        get_saved_ads.clear()
+                        st.rerun()
+            with pg_cols[1]:
+                st.markdown(f"<p style='text-align:center;color:var(--tx2);font-size:13px'>Page {st.session_state.lib_page + 1} of {total_pages} · {total_ads} ads</p>", unsafe_allow_html=True)
+            with pg_cols[2]:
+                if st.session_state.lib_page < total_pages - 1:
+                    if st.button("Next →", key="lib_next"):
+                        st.session_state.lib_page += 1
+                        get_saved_ads.clear()
+                        st.rerun()
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 4 — HISTORY
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -3513,7 +3740,12 @@ elif page == "history":
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
-    history = get_history()
+    HIST_PAGE_SIZE = 20
+    if "hist_page" not in st.session_state:
+        st.session_state.hist_page = 0
+    history = get_history(limit=HIST_PAGE_SIZE, offset=st.session_state.hist_page * HIST_PAGE_SIZE)
+    total_hist = get_history_count()
+    total_hist_pages = max(1, -(-total_hist // HIST_PAGE_SIZE))
 
     if not history:
         st.info("No generation history yet. Generate some ads first!")
@@ -3543,12 +3775,12 @@ elif page == "history":
                     )
                 st.markdown(
                     f"""<div class="history-card">
-                        <div style="font-size:15px;font-weight:700;color:#e6edf3">{entry["product_name"]}{badge}</div>
+                        <div style="font-size:15px;font-weight:700;color:#e6edf3">{safe(entry["product_name"])}{badge}</div>
                         <div class="history-meta">
-                            Brand: {entry["brand_name"] or "—"} &nbsp;·&nbsp;
+                            Brand: {safe(entry["brand_name"] or "—")} &nbsp;·&nbsp;
                             {entry["variants_qty"]} image(s) &nbsp;·&nbsp;
                             {ts} &nbsp;·&nbsp;
-                            <span style="font-family:monospace;color:#1A1A1A">{entry["ugc_id"]}</span>
+                            <span style="font-family:monospace;color:#1A1A1A">{safe(entry["ugc_id"])}</span>
                         </div>
                         {thumbs_html}
                     </div>""",
@@ -3568,9 +3800,28 @@ elif page == "history":
                             with cols[i % 3]:
                                 if url:
                                     render_ad_image(url, f"hist_{entry['id']}_{i}")
-                                    st.markdown(f'<div style="margin:6px 0 10px;padding:6px 8px;background:#F8F8F6;border:1px solid #E8E8E6;border-radius:6px;font-family:\'DM Mono\',monospace;font-size:10px;color:#6B6B6B;word-break:break-all;line-height:1.4">{filename}</div>', unsafe_allow_html=True)
+                                    st.markdown(f'<div style="margin:6px 0 10px;padding:6px 8px;background:#F8F8F6;border:1px solid #E8E8E6;border-radius:6px;font-family:\'DM Mono\',monospace;font-size:10px;color:#6B6B6B;word-break:break-all;line-height:1.4">{safe(filename)}</div>', unsafe_allow_html=True)
                                     get_download_button(url, filename, key_suffix=f"hist_{entry['id']}_{i}")
                 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+        # ── History pagination controls ──
+        if total_hist_pages > 1:
+            st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+            hpg_cols = st.columns([1, 3, 1])
+            with hpg_cols[0]:
+                if st.session_state.hist_page > 0:
+                    if st.button("← Previous", key="hist_prev"):
+                        st.session_state.hist_page -= 1
+                        get_history.clear()
+                        st.rerun()
+            with hpg_cols[1]:
+                st.markdown(f"<p style='text-align:center;color:var(--tx2);font-size:13px'>Page {st.session_state.hist_page + 1} of {total_hist_pages} · {total_hist} entries</p>", unsafe_allow_html=True)
+            with hpg_cols[2]:
+                if st.session_state.hist_page < total_hist_pages - 1:
+                    if st.button("Next →", key="hist_next"):
+                        st.session_state.hist_page += 1
+                        get_history.clear()
+                        st.rerun()
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 5 — BRANDS
@@ -3703,7 +3954,7 @@ elif page == "products":
             grouped.setdefault(bname, []).append(p)
 
         for bname, prods in grouped.items():
-            st.markdown(f'<p style="font-size:11px;font-weight:700;color:#9A9A9A;text-transform:uppercase;letter-spacing:0.8px;margin:16px 0 6px">{bname}</p>', unsafe_allow_html=True)
+            st.markdown(f'<p style="font-size:11px;font-weight:700;color:#9A9A9A;text-transform:uppercase;letter-spacing:0.8px;margin:16px 0 6px">{safe(bname)}</p>', unsafe_allow_html=True)
             for p in prods:
                 card_col, btn_col = st.columns([8, 1])
                 with card_col:
@@ -4278,16 +4529,25 @@ elif page == "ugc-video":
                             st.rerun()
                         else:
                             # still pending — wait 15s then rerun
-                            time.sleep(15)
-                            st.rerun()
+                            if _HAS_AUTOREFRESH:
+                                _st_autorefresh(interval=15000, key="autorefresh_ugc", limit=None)
+                            else:
+                                time.sleep(15)
+                                st.rerun()
                     else:
                         st.warning(f"Status check error: HTTP {poll_resp.status_code}")
-                        time.sleep(15)
-                        st.rerun()
+                        if _HAS_AUTOREFRESH:
+                            _st_autorefresh(interval=15000, key="autorefresh_ugc_err", limit=None)
+                        else:
+                            time.sleep(15)
+                            st.rerun()
                 except Exception as _pe:
                     st.warning(f"Polling error: {_pe}")
-                    time.sleep(15)
-                    st.rerun()
+                    if _HAS_AUTOREFRESH:
+                        _st_autorefresh(interval=15000, key="autorefresh_ugc_exc", limit=None)
+                    else:
+                        time.sleep(15)
+                        st.rerun()
 
         elif _result:
             video_url = _result.get("video_url", "")
@@ -4344,10 +4604,10 @@ elif page == "users":
             with _c1:
                 st.markdown(
                     f'<div class="user-row">'
-                    f'<div class="user-avatar">{_init}</div>'
+                    f'<div class="user-avatar">{safe(_init)}</div>'
                     f'<div style="flex:1;min-width:0">'
-                    f'<div style="font-size:13px;font-weight:600;color:#1A1A1A">{_uname}</div>'
-                    f'<div style="font-size:11px;color:#6B6B6B">{_uemail}</div>'
+                    f'<div style="font-size:13px;font-weight:600;color:#1A1A1A">{safe(_uname)}</div>'
+                    f'<div style="font-size:11px;color:#6B6B6B">{safe(_uemail)}</div>'
                     f'</div>'
                     f'{_badge}'
                     f'<div style="font-size:10px;color:#9A9A9A;white-space:nowrap">{_ts}</div>'
