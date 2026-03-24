@@ -2823,9 +2823,23 @@ elif page == "image-ads":
                 except Exception:
                     poll_data = {"status": "processing"}
 
-                if poll_data.get("status") == "done":
+                # Debug: show raw poll response in expander
+                with st.expander("🔍 Debug — poll response", expanded=False):
+                    st.caption(f"ugc_id: `{ugc_id}`")
+                    st.json(poll_data)
+
+                # Accept both "done" and "completed" status from n8n
+                poll_status = poll_data.get("status", "")
+                raw_images  = poll_data.get("images", [])
+
+                # Also handle n8n returning a single image URL directly
+                if not raw_images and poll_data.get("url"):
+                    raw_images = [{"url": poll_data["url"]}]
+                if not raw_images and poll_data.get("image_url"):
+                    raw_images = [{"url": poll_data["image_url"]}]
+
+                if poll_status in ("done", "completed") and raw_images:
                     meta       = st.session_state.pending_comp_meta
-                    raw_images = poll_data.get("images", [])
                     images     = [
                         {**img, "filename": build_competitor_filename(
                             brand_name     = meta.get("brand_name", ""),
@@ -2853,9 +2867,12 @@ elif page == "image-ads":
                     st.session_state.comp_poll_count               = 0
                     inject_generation_guard(False)
                     st.rerun()
-                elif st.session_state.comp_poll_count >= 40:
-                    st.error("⏱️ Timeout — controlla la History quando le immagini sono pronte.")
-                    if st.button("🔄 Reset", key="comp_reset_timeout"):
+                elif st.session_state.comp_poll_count >= 72:  # 72 × 5s = 6 min
+                    st.error("⏱️ Timeout — il workflow sta impiegando più del solito.")
+                    if st.button("🔄 Controlla ancora", key="comp_check_again"):
+                        st.session_state.comp_poll_count = 0
+                        st.rerun()
+                    if st.button("✕ Annulla", key="comp_reset_timeout"):
                         st.session_state.generating          = False
                         st.session_state.comp_job_submitted  = False
                         st.session_state.comp_poll_count     = 0
