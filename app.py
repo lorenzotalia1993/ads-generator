@@ -187,7 +187,10 @@ h3 { font-size: 12px !important; font-weight: 500 !important; color: var(--tx2) 
 
 /* Strip ALL Streamlit default spacing from sidebar — every layer */
 [data-testid="stSidebar"] .stVerticalBlock,
-[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0 !important; padding: 0 !important; }
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+  gap: 0 !important; padding: 0 !important;
+  align-items: stretch !important; width: 100% !important;
+}
 [data-testid="stSidebar"] .element-container {
   margin: 0 !important; padding: 0 !important; min-height: 0 !important;
 }
@@ -214,7 +217,10 @@ h3 { font-size: 12px !important; font-weight: 500 !important; color: var(--tx2) 
 /* ─── Sidebar nav — buttons ────────────────────────── */
 [data-testid="stSidebar"] .stButton,
 [data-testid="stSidebar"] .stButton > div,
-[data-testid="stSidebar"] .stButton > div > div { margin: 0 !important; padding: 0 !important; }
+[data-testid="stSidebar"] .stButton > div > div {
+  margin: 0 !important; padding: 0 !important;
+  width: 100% !important; display: block !important;
+}
 [data-testid="stSidebar"] .stButton button {
   text-align: left !important; justify-content: flex-start !important;
   border: none !important; border-radius: 6px !important;
