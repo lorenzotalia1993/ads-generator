@@ -2846,10 +2846,46 @@ elif page == "image-ads":
                     poll_status = "error"
                     st.caption(f"poll error: {_pe}")
 
-                # ── Debug expander ──
-                with st.expander("🔍 Debug", expanded=False):
-                    st.caption(f"ugc_id: `{ugc_id}`  |  status: `{poll_status}`  |  images: {len(raw_images)}  |  poll #{poll_count}")
+                # ── Debug expander (open by default so we can see poll response) ──
+                with st.expander(f"🔍 Poll #{poll_count} — status: `{poll_status}` — images: {len(raw_images)}", expanded=True):
+                    st.caption(f"ugc_id polled: `{ugc_id}`")
                     st.json(poll_data)
+
+                # ── Manual result entry (fallback if poll URL doesn't work) ──
+                with st.expander("📋 Paste n8n result manually", expanded=False):
+                    manual_json = st.text_area("Paste n8n JSON output here", key="comp_manual_json", height=120)
+                    if st.button("✅ Use this result", key="comp_manual_submit"):
+                        try:
+                            _mj = json.loads(manual_json)
+                            if isinstance(_mj, list): _mj = _mj[0]
+                            _mimgs = _mj.get("images", [])
+                            _mimgs = [dict(img, url=img.get("url") or img.get("image_url","")) for img in _mimgs]
+                            if not _mimgs and _mj.get("image_url"):
+                                _mimgs = [{"url": _mj["image_url"]}]
+                            if _mimgs:
+                                meta = st.session_state.get("pending_comp_meta", {})
+                                _fim = [dict(img, filename=build_competitor_filename(
+                                    meta.get("brand_name",""), meta.get("product_name",""),
+                                    meta.get("competitor_url",""), img.get("index", i)
+                                )) for i, img in enumerate(_mimgs)]
+                                save_to_history(
+                                    ugc_id=_mj.get("ugc_id", ugc_id), product_id=meta.get("product_id",""),
+                                    product_name=meta.get("product_name",""), brand_name=meta.get("brand_name",""),
+                                    variants_qty=len(_fim), images=_fim, mode="competitor_reverse",
+                                )
+                                st.session_state.last_comp_results          = _fim
+                                st.session_state.last_comp_results_brand_id = meta.get("brand_id")
+                                st.session_state.pending_comp_ugc_id        = None
+                                st.session_state.pending_comp_meta          = {}
+                                st.session_state.generating                 = False
+                                st.session_state.comp_job_submitted         = False
+                                st.session_state.comp_poll_count            = 0
+                                inject_generation_guard(False)
+                                st.rerun()
+                            else:
+                                st.error("No images found in JSON")
+                        except Exception as _me:
+                            st.error(f"Invalid JSON: {_me}")
 
                 # ── Done → show results ──
                 if poll_status in ("done", "completed") and raw_images:
