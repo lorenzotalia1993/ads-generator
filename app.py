@@ -1330,15 +1330,20 @@ def upload_competitor_image_to_supabase(file_bytes: bytes, filename: str, mime_t
     ext  = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
     path = f"{_uuid.uuid4()}.{ext}"
     sb   = get_sb()
-    # Auto-create bucket if it doesn't exist
     try:
-        sb.storage.create_bucket(BUCKET, options={"public": True})
-    except Exception:
-        pass  # already exists — ignore
-    sb.storage.from_(BUCKET).upload(
-        path, file_bytes,
-        file_options={"content-type": mime_type, "upsert": "true"},
-    )
+        result = sb.storage.from_(BUCKET).upload(
+            path, file_bytes,
+            file_options={"content-type": mime_type, "upsert": "true"},
+        )
+    except Exception as e:
+        err = str(e)
+        if "Bucket not found" in err or "404" in err:
+            raise RuntimeError(
+                "Storage bucket 'competitor-ads' not found. "
+                "Please create it in Supabase Dashboard → Storage → New bucket "
+                "(name: competitor-ads, Public: ✓)."
+            )
+        raise
     return sb.storage.from_(BUCKET).get_public_url(path)
 
 
