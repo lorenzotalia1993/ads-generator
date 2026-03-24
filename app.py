@@ -121,9 +121,7 @@ html, body, [class*="css"] {
 header[data-testid="stHeader"] { display: none !important; }
 .page-header h1 a, h1 a, h2 a, h3 a,
 [data-testid="stMarkdownContainer"] h1 a { display: none !important; }
-[data-testid="stSidebarCollapseButton"],
-button[kind="header"],
-[data-testid="collapsedControl"] { display: none !important; }
+button[kind="header"] { display: none !important; }
 
 /* ─── Remove all top dead space from Streamlit shell ── */
 .stApp > header,
@@ -201,6 +199,7 @@ h3 { font-size: 12px !important; font-weight: 500 !important; color: var(--tx2) 
 [data-testid="stSidebar"] section {
   display: flex !important; flex-direction: column !important;
   height: 100% !important; overflow-y: auto !important;
+  padding-left: 0 !important; padding-right: 0 !important;
 }
 .sb-flex-spacer { flex: 1 1 auto; min-height: 32px; display: block; }
 /* Ensure the spacer's Streamlit wrapper also expands */
