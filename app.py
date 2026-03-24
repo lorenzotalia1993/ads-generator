@@ -121,7 +121,9 @@ html, body, [class*="css"] {
 header[data-testid="stHeader"] { display: none !important; }
 .page-header h1 a, h1 a, h2 a, h3 a,
 [data-testid="stMarkdownContainer"] h1 a { display: none !important; }
+/* Hide hamburger menu; keep only the «/» collapse arrows */
 button[kind="header"] { display: none !important; }
+[data-testid="collapsedControl"] { display: none !important; }
 
 /* ─── Remove all top dead space from Streamlit shell ── */
 .stApp > header,
@@ -715,6 +717,64 @@ button[kind="primaryFormSubmit"] {
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
+}
+
+/* ─── Mobile / responsive ──────────────────────────── */
+/* Make the collapse arrow always visible and tap-friendly */
+[data-testid="stSidebarCollapseButton"] button {
+  width: 36px !important; height: 36px !important;
+  min-width: 36px !important; padding: 0 !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+}
+
+@media (max-width: 768px) {
+  /* Content padding */
+  .main .block-container,
+  [data-testid="stMainBlockContainer"] {
+    padding: 0.5rem 1rem 1.5rem !important;
+  }
+
+  /* KPI cards: 2 columns on tablet */
+  [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+    min-width: calc(50% - 8px) !important;
+  }
+
+  /* Card values slightly smaller */
+  .card-value { font-size: 26px !important; }
+
+  /* Sidebar overlays on mobile (Streamlit default), ensure it's full height */
+  [data-testid="stSidebar"] {
+    position: fixed !important; z-index: 999 !important;
+    height: 100dvh !important;
+  }
+
+  /* Sidebar collapse arrow: larger tap target */
+  [data-testid="stSidebarCollapseButton"] {
+    position: fixed !important; top: 8px !important; left: 8px !important;
+    z-index: 1000 !important;
+  }
+
+  /* Nav links: taller tap target on mobile */
+  [data-testid="stSidebar"] a.sb-nav-link {
+    height: 40px !important; font-size: 13.5px !important;
+  }
+
+  /* Page headers */
+  .page-header h1 { font-size: 22px !important; }
+}
+
+@media (max-width: 480px) {
+  /* Stack KPI cards to 1 column on phone */
+  [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+    min-width: 100% !important;
+  }
+
+  .main .block-container,
+  [data-testid="stMainBlockContainer"] {
+    padding: 0.5rem 0.75rem 1rem !important;
+  }
+
+  .card-value { font-size: 22px !important; }
 }
 
 /* ─── Dark mode: Streamlit component overrides ─────── */
