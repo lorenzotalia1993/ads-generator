@@ -801,6 +801,29 @@ body.adfl-dark [data-testid="stDataFrame"] canvas { filter: invert(1) hue-rotate
 st_components.html("""<script>
 (function() {
   var doc = window.parent.document;
+  // Hide hamburger menu — try every known Streamlit selector
+  var HAMBURGER_SELECTORS = [
+    '[data-testid="collapsedControl"]',
+    '[data-testid="stSidebarCollapsedControl"]',
+    'button[aria-label="open sidebar"]',
+    'button[aria-label="Open sidebar"]',
+    'button[aria-label="Open Sidebar"]',
+  ];
+  function hideHamburger() {
+    HAMBURGER_SELECTORS.forEach(function(sel) {
+      doc.querySelectorAll(sel).forEach(function(el) {
+        el.style.setProperty('display', 'none', 'important');
+      });
+    });
+  }
+  hideHamburger();
+  new MutationObserver(hideHamburger).observe(doc.body, { childList: true, subtree: true });
+})();
+</script>""", height=0)
+
+st_components.html("""<script>
+(function() {
+  var doc = window.parent.document;
   var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
     + '<rect width="32" height="32" rx="7" fill="#1A1A1A"/>'
     + '<path d="M4 10V5H9" stroke="#C8F060" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'
