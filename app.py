@@ -192,11 +192,11 @@ h3 { font-size: 12px !important; font-weight: 500 !important; color: var(--tx2) 
   align-items: stretch !important; width: 100% !important;
 }
 [data-testid="stSidebar"] .element-container {
-  margin: 0 !important; padding: 0 !important; min-height: 0 !important;
+  margin: 0 !important; padding: 0 !important; min-height: 0 !important; width: 100% !important;
 }
 [data-testid="stSidebar"] .stMarkdown,
-[data-testid="stSidebar"] .stMarkdown > div { margin: 0 !important; padding: 0 !important; }
-[data-testid="stSidebar"] .block-container { padding: 0 !important; }
+[data-testid="stSidebar"] .stMarkdown > div { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+[data-testid="stSidebar"] .block-container { padding: 0 !important; width: 100% !important; }
 /* Zero lateral padding on outer wrapper divs (do NOT make them flex) */
 [data-testid="stSidebar"] > div,
 [data-testid="stSidebar"] > div > div,
@@ -215,14 +215,15 @@ h3 { font-size: 12px !important; font-weight: 500 !important; color: var(--tx2) 
 [data-testid="stSidebar"] .element-container:has(.sb-flex-spacer) { flex: 1 1 auto !important; min-height: 32px !important; }
 
 /* ─── Sidebar nav — buttons ────────────────────────── */
+[data-testid="stSidebar"] .element-container,
 [data-testid="stSidebar"] .stButton,
 [data-testid="stSidebar"] .stButton > div,
 [data-testid="stSidebar"] .stButton > div > div {
-  margin: 0 !important; padding: 0 !important;
-  width: 100% !important; display: block !important;
+  margin: 0 !important; padding: 0 !important; width: 100% !important;
 }
 [data-testid="stSidebar"] .stButton button {
-  text-align: left !important; justify-content: flex-start !important;
+  display: flex !important;
+  text-align: left !important; justify-content: flex-start !important; align-items: center !important;
   border: none !important; border-radius: 6px !important;
   font-size: 12.5px !important; font-weight: 400 !important;
   height: 34px !important; padding: 0 12px !important;
