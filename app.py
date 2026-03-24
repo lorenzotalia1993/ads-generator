@@ -1326,14 +1326,20 @@ def build_filename(brand_name: str, product_name: str, creative_angle: str, vari
 def upload_competitor_image_to_supabase(file_bytes: bytes, filename: str, mime_type: str) -> str:
     """Upload competitor ad image to Supabase Storage bucket 'competitor-ads'. Returns public URL."""
     import uuid as _uuid
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
+    BUCKET = "competitor-ads"
+    ext  = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
     path = f"{_uuid.uuid4()}.{ext}"
-    sb = get_sb()
-    sb.storage.from_("competitor-ads").upload(
+    sb   = get_sb()
+    # Auto-create bucket if it doesn't exist
+    try:
+        sb.storage.create_bucket(BUCKET, options={"public": True})
+    except Exception:
+        pass  # already exists — ignore
+    sb.storage.from_(BUCKET).upload(
         path, file_bytes,
         file_options={"content-type": mime_type, "upsert": "true"},
     )
-    return sb.storage.from_("competitor-ads").get_public_url(path)
+    return sb.storage.from_(BUCKET).get_public_url(path)
 
 
 def build_competitor_filename(brand_name: str, product_name: str, competitor_url: str, variant_index: int) -> str:
