@@ -957,6 +957,14 @@ def get_sb():
     key = st.secrets.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyZWdzamhld3puYWlhcGtvbm1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNTgxNzQsImV4cCI6MjA4ODYzNDE3NH0.d06xTShGMljQWSfBt-BLyY6sCk4XxwtxDQJT0EEPMdQ")
     return create_client(url, key)
 
+def get_sb_admin():
+    """Supabase client with service_role key — bypasses RLS. Used for storage uploads."""
+    url         = st.secrets.get("SUPABASE_URL", "https://rregsjhewznaiapkonmp.supabase.co")
+    service_key = st.secrets.get("SUPABASE_SERVICE_KEY", "")
+    if not service_key:
+        return get_sb()  # fall back to anon if not configured
+    return create_client(url, service_key)
+
 # ─── Auth helpers ─────────────────────────────────────────────────────────────
 
 def _hash_pw(pw: str) -> str:
@@ -1329,7 +1337,7 @@ def upload_competitor_image_to_supabase(file_bytes: bytes, filename: str, mime_t
     BUCKET = "competitor-ads"
     ext  = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
     path = f"{_uuid.uuid4()}.{ext}"
-    sb   = get_sb()
+    sb   = get_sb_admin()
     try:
         result = sb.storage.from_(BUCKET).upload(
             path, file_bytes,
